@@ -39,9 +39,11 @@ def _get_known_providers() -> dict[str, dict]:
             cache_dir = Path.home() / ".config" / "lmswitch" / "env"
             cache_dir.mkdir(parents=True, exist_ok=True)
             (cache_dir / "providers.json").write_text(resp.text, encoding="utf-8")
+            click.echo(f"  ✓ 获取厂商列表")
             return _KNOWN_CACHE
     except Exception:
         pass
+    click.echo(f"  使用本地厂商列表")
 
     # 用户缓存 → 包默认
     for src in [
@@ -57,6 +59,7 @@ def _get_known_providers() -> dict[str, dict]:
 
 def _refresh_env_cache(provider_key: str) -> None:
     """从 GitHub 拉取 env 配置并缓存到 ~/.config/lmswitch/env/."""
+    click.echo(f"  获取远程环境配置...")
     url = f"{_GITHUB_RAW}/providers/{provider_key}.json"
     try:
         resp = httpx.get(url, timeout=5)
@@ -65,8 +68,9 @@ def _refresh_env_cache(provider_key: str) -> None:
         cache_dir = Path.home() / ".config" / "lmswitch" / "env"
         cache_dir.mkdir(parents=True, exist_ok=True)
         (cache_dir / f"{provider_key}.json").write_text(resp.text, encoding="utf-8")
+        click.echo(f"  ✓ 环境配置已缓存")
     except Exception:
-        pass
+        click.secho(f"  ⚠ 无法获取远程配置，使用本地默认", fg="yellow")
 
 
 def _mask_key(key: str) -> str:
@@ -319,18 +323,18 @@ def reload_models(name: str):
         click.secho("无 OpenAI endpoint，无法拉取模型", fg="yellow")
         return
 
-    click.echo(f"  从 API 拉取模型列表...")
+    click.echo(f"  从 API 拉取模型...")
     new_models = _fetch_models(provider.endpoints["openai"], provider.api_key)
     if new_models:
         provider.models = new_models
         provider.default_model = new_models[0]
         mgr.add(provider, key=name)
         mgr.save()
-        click.echo(f"  ✓ 更新 {len(new_models)} 个模型 → {cfg_path}")
+        click.echo(f"  ✓ 更新 {len(new_models)} 个模型")
         for m in new_models:
             click.echo(f"    {m}")
     else:
-        click.secho(f"  ⚠ 无法拉取模型，保留现有 {len(provider.models)} 个", fg="yellow")
+        click.secho(f"  ⚠ 拉取失败，保留原有 {len(provider.models)} 个模型", fg="yellow")
     _refresh_env_cache(name)
 
 

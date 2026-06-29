@@ -26,7 +26,6 @@ lmswitch launch claude-code
 | `lmswitch launch` | 启动 AI Agent，自动注入环境变量 |
 | `lmswitch test` | 测试模型延迟 / TTFT / 吞吐 |
 | `lmswitch provider` | 管理服务提供商 (add/list/show/reload/remove) |
-| `lmswitch agent list` | 查看 Agent 绑定 |
 | `lmswitch doctor` | 配置健康检查 |
 
 ## 支持的 Agent

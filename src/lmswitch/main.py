@@ -5,7 +5,6 @@ from __future__ import annotations
 import click
 
 from lmswitch import __version__
-from lmswitch.cli.agent_cmd import agent_group
 from lmswitch.cli.doctor import doctor
 from lmswitch.cli.launch import launch
 from lmswitch.cli.provider_cmd import provider_group
@@ -22,7 +21,6 @@ def cli():
 
 
 # 注册子命令
-cli.add_command(agent_group)
 cli.add_command(doctor)
 cli.add_command(launch)
 cli.add_command(test)
