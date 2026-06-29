@@ -165,7 +165,7 @@ def list_providers():
     config, _ = ensure_config_exists()
     if not config.providers:
         click.echo("暂无已配置的 Provider.")
-        click.echo("使用 'lmswitch provider add <name> --api-base <url> --api-key <key>' 添加.")
+        click.echo("使用 'lmswitch provider add [name] --api-base <url> --api-key <key>' 添加.")
         return
 
     click.echo("已配置的 Provider:")
@@ -187,12 +187,21 @@ def _auto_name(api_base: str) -> str:
     """从 API Base URL 自动生成 Provider 名称.
 
     http://10.235.115.58:3000  →  10.235.115.58
-    https://api.openai.com    →  api.openai.com
+    10.235.115.58:3000         →  10.235.115.58
+    https://api.openai.com     →  api.openai.com
     """
+    # 补全协议头
+    if not re.match(r'https?://', api_base):
+        api_base = f"http://{api_base}"
     m = re.search(r'https?://([^/]+)', api_base)
     if not m:
         return "custom"
-    return m.group(1).split(":")[0]
+    host = m.group(1).split(":")[0]
+    # localhost 太通用，加上端口区分
+    if host == "localhost":
+        port = m.group(1).split(":")[1] if ":" in m.group(1) else "8000"
+        return f"localhost:{port}"
+    return host
 
 
 @provider_group.command(name="add")
@@ -265,8 +274,13 @@ def add_provider(name: str | None, api_base: str | None, api_key: str | None,
     if models:
         model_list = [m.strip() for m in models.split(",") if m.strip()]
 
-    click.echo(f"  探测 API 端点...")
-    endpoints = _detect_endpoints(api_base, api_key)
+    if _is_plaintext_key(api_key):
+        click.echo(f"  探测 API 端点...")
+        endpoints = _detect_endpoints(api_base, api_key)
+    else:
+        # env var 引用无法探测，直接用已知配置或手动选择
+        endpoints: dict[str, str] = {}
+        click.echo(f"  ${api_key[2:-1]} 环境变量引用，跳过探测")
     if known:
         # 已知厂商: 补全探测没识别到的格式
         for fmt, url in known["endpoints"].items():
@@ -282,7 +296,7 @@ def add_provider(name: str | None, api_base: str | None, api_key: str | None,
         endpoints = {fmt: api_base}
 
     # ── 拉取模型 ──
-    if not model_list and "openai" in endpoints:
+    if not model_list and "openai" in endpoints and _is_plaintext_key(api_key):
         click.echo(f"  拉取可用模型...")
         model_list = _fetch_models(endpoints["openai"], api_key)
         if model_list:
