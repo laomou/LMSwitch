@@ -186,8 +186,8 @@ def list_providers():
 def _auto_name(api_base: str) -> str:
     """从 API Base URL 自动生成 Provider 名称.
 
-    http://10.235.115.58:3000  →  10.235.115.58
-    10.235.115.58:3000         →  10.235.115.58
+    http://host:3000  →  host
+    host:3000         →  host
     https://api.openai.com     →  api.openai.com
     """
     # 补全协议头
@@ -215,8 +215,8 @@ def add_provider(name: str | None, api_base: str | None, api_key: str | None,
 
     \b
     名称从 --api-base 自动生成，也可手动指定:
-      lmswitch provider add --api-base http://10.235.115.58:3000 --api-key '$MY_KEY'
-      → 自动生成名称: 10-235-115-58-3000
+      lmswitch provider add --api-base http://your-host:3000 --api-key '$MY_KEY'
+      → 自动生成名称: your-host
 
     \b
     手动指定名称:
