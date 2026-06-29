@@ -51,13 +51,15 @@ def test(target: str | None, output_format: str) -> None:
             p = _make_provider(pc)
             if p is None:
                 continue
-            click.echo(f"  [{pk}]")
+            group: list[TestResult] = []
             for model in (pc.models or p.list_models()):
                 if model:
-                    r = p.test_model(model, pc.api_key, api_base=_first_endpoint(pc))
+                    r = p.test_model(model, pc.api_key, api_base=_first_endpoint(pc), provider_key=pk)
                     results.append(r)
-                    click.echo(f"    {_status_icon(r.status)} {model:<28} {_fmt_ms(r.latency_ms):>6}  {_fmt_ms(r.ttft_ms):>6}  {_fmt_tps(r.tokens_per_sec):>6}")
-            click.echo()
+                    group.append(r)
+            if group:
+                _print_results_table(group)
+                click.echo()
 
 
 def _test_model(config, provider_name: str, model: str) -> list[TestResult]:
@@ -71,7 +73,7 @@ def _test_model(config, provider_name: str, model: str) -> list[TestResult]:
     if p is None:
         click.secho(f"不支持的 Provider: {pc.name.value}", fg="red")
         sys.exit(1)
-    return [p.test_model(model, pc.api_key, api_base=_first_endpoint(pc))]
+    return [p.test_model(model, pc.api_key, api_base=_first_endpoint(pc), provider_key=provider_name)]
 
 
 def _test_provider_models(config, provider_name: str) -> list[TestResult]:
@@ -88,7 +90,7 @@ def _test_provider_models(config, provider_name: str) -> list[TestResult]:
         return []
     results = []
     for model in (pc.models or p.list_models()):
-        results.append(p.test_model(model, pc.api_key, api_base=_first_endpoint(pc)))
+        results.append(p.test_model(model, pc.api_key, api_base=_first_endpoint(pc), provider_key=provider_name))
     return results
 
 
@@ -97,23 +99,27 @@ def _print_results_table(results: list[TestResult]) -> None:
     if not results:
         click.echo("  无结果")
         return
-    name_w = max(max(len(r.provider.value) for r in results), 8)
+
+    # 取第一个结果的 provider 作为标题
+    provider_name = results[0].provider
+
     model_w = max(max(len(r.model) for r in results), 5)
     status_w = 12
     latency_w = 7
     ttft_w = 6
     tps_w = 8
 
+    click.echo(f"Provider: {provider_name}")
     click.echo(
-        f"  {'Provider':<{name_w}}  {'Model':<{model_w}}  "
+        f"{'Model':<{model_w}}  "
         f"{'Status':<{status_w}}  {'Total':>{latency_w}}  {'TTFT':>{ttft_w}}  {'TPS':>{tps_w}}"
     )
-    click.echo(f"  {'-' * name_w}  {'-' * model_w}  {'-' * status_w}  {'-' * latency_w}  {'-' * ttft_w}  {'-' * tps_w}")
+    click.echo(f"{'-' * model_w}  {'-' * status_w}  {'-' * latency_w}  {'-' * ttft_w}  {'-' * tps_w}")
 
     for r in results:
         icon = _status_icon(r.status)
         click.echo(
-            f"  {r.provider.value:<{name_w}}  {r.model:<{model_w}}  "
+            f"{r.model:<{model_w}}  "
             f"{icon} {r.status:<{status_w - 2}}  "
             f"{_fmt_ms(r.latency_ms):>{latency_w}}  "
             f"{_fmt_ms(r.ttft_ms):>{ttft_w}}  "

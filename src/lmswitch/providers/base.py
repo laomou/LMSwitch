@@ -106,8 +106,10 @@ class Provider(ABC):
         model: str,
         api_key: str | None = None,
         api_base: str | None = None,
+        provider_key: str = "",
     ) -> TestResult:
         """测试模型 (stream 模式): TTFT + 吞吐 + 总延迟."""
+        pkey = provider_key or self.config.name.value
         key = api_key or self.config.api_key
         base = api_base or next(iter(self.config.endpoints.values()), "")
 
@@ -131,14 +133,14 @@ class Provider(ABC):
                 ) as resp:
                     if resp.status_code in (401, 403):
                         return TestResult(
-                            provider=self.config.name, model=model,
+                            provider=pkey, model=model,
                             status="unauthorized",
                             error_message=f"HTTP {resp.status_code}",
                         )
 
                     if resp.status_code != 200:
                         return TestResult(
-                            provider=self.config.name, model=model,
+                            provider=pkey, model=model,
                             status="error",
                             error_message=f"HTTP {resp.status_code}",
                         )
@@ -157,7 +159,7 @@ class Provider(ABC):
             tps = token_count / total_s if total_s > 0 else 0
 
             return TestResult(
-                provider=self.config.name,
+                provider=pkey,
                 model=model,
                 status="ok",
                 latency_ms=round(total_ms, 1),
@@ -167,19 +169,19 @@ class Provider(ABC):
 
         except httpx.TimeoutException:
             return TestResult(
-                provider=self.config.name, model=model,
+                provider=pkey, model=model,
                 status="timeout",
                 error_message="请求超时 (30s)",
             )
         except httpx.ConnectError:
             return TestResult(
-                provider=self.config.name, model=model,
+                provider=pkey, model=model,
                 status="error",
                 error_message="无法连接",
             )
         except Exception as e:
             return TestResult(
-                provider=self.config.name, model=model,
+                provider=pkey, model=model,
                 status="error",
                 error_message=str(e)[:200],
             )

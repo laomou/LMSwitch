@@ -94,7 +94,7 @@ class ResolvedConfig(BaseModel):
 class TestResult(BaseModel):
     """模型测试结果."""
 
-    provider: ProviderType
+    provider: str = Field(description="Provider 键名 (如 'stepcode.basemind.com')")
     model: str
     status: str  # "ok" | "timeout" | "error" | "unauthorized"
     latency_ms: float = 0.0     # 总响应时间
