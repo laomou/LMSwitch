@@ -198,9 +198,9 @@ def _auto_name(api_base: str) -> str:
 @provider_group.command(name="add")
 @click.argument("name", required=False)
 @click.option("--api-base", default=None, help="API Base URL (已知厂商自动填充)")
-@click.option("--api-key", default=None, required=True, help="API Key (支持 ${ENV_VAR} 引用)")
+@click.option("--api-key", default=None, help="API Key (支持 ${ENV_VAR} 引用，留空则交互式输入)")
 @click.option("--models", default=None, help="手动指定模型列表，逗号分隔")
-def add_provider(name: str | None, api_base: str | None, api_key: str,
+def add_provider(name: str | None, api_base: str | None, api_key: str | None,
                   models: str | None):
     """添加 Provider 配置.
 
@@ -218,22 +218,27 @@ def add_provider(name: str | None, api_base: str | None, api_key: str,
       lmswitch provider add deepseek --api-key '$DEEPSEEK_API_KEY'
       lmswitch provider add anthropic --api-key '$ANTHROPIC_API_KEY'
     """
-    # ── 名称 ──
+    known_providers = _get_known_providers()  # 先拉取，避免网络卡交互
+
+    # 1. 确定 api_base: 已知厂商 > --api-base > 交互输入
+    known = known_providers.get(name.lower()) if name else None
+    if known and not api_base:
+        api_base = known["api_base"]
+    if not api_base:
+        api_base = click.prompt("API Base URL", default="http://localhost:8000")
+
+    # 2. 确定名称: 参数 > 自动提取
     if name:
         provider_key = name.lower().replace(" ", "-")
     else:
-        provider_key = _auto_name(api_base or "")
+        provider_key = _auto_name(api_base)
         click.echo(f"  自动生成名称: {provider_key}")
+        # 自动名称也可能命中已知厂商
+        if not known:
+            known = known_providers.get(provider_key)
 
-    # ── 检测内置厂商 ──
-    known = _get_known_providers().get(provider_key)
-
-    # ── api_base ──
-    if known and not api_base:
-        api_base = known["api_base"]
+    if known:
         click.echo(f"  已知厂商: {provider_key} → {api_base}")
-    if not api_base:
-        api_base = click.prompt("API Base URL", default="http://localhost:8000")
 
     # ── 加载配置 ──
     config, cfg_path = ensure_config_exists()
@@ -245,13 +250,15 @@ def add_provider(name: str | None, api_base: str | None, api_key: str,
 
     # ── API Key ──
     if not api_key:
-        api_key = click.prompt("API Key", hide_input=True)
+        api_key = click.prompt("API Key (${ENV} 或直接输入)")
+
     if _is_plaintext_key(api_key):
-        click.echo()
-        click.secho("  ⚠ 明文 API Key 会直接写入配置文件，不安全", fg="yellow")
-        click.secho("    建议使用环境变量: --api-key '${MY_KEY}'", fg="yellow")
-        if not click.confirm("    仍然明文存储?", default=False):
+        click.echo(f"  ✓ Key: {_mask_key(api_key)}")
+        click.secho("  ⚠ 明文存储不安全，建议用 ${MY_KEY}", fg="yellow")
+        if not click.confirm("  仍然存储?", default=False):
             return
+    else:
+        click.echo(f"  ✓ Key: {api_key}")
 
     # ── 自动探测 endpoints ──
     model_list: list[str] = []
