@@ -1,66 +1,74 @@
 # LMSwitch — AI Agent 客制化配置中心
 
-一键切换 AI Coding Agent，统一管理 18+ 服务提供商配置。
+统一管理多 AI Agent 配置，一键启动。
 
 ```bash
 pip install lmswitch
 ```
 
-## 为什么需要 LMSwitch？
-
-每个 AI Agent（Claude Code、Codex、Cline 等）使用不同的环境变量和配置格式。
-LMSwitch 让你用一套统一配置管理所有 Agent 和 Provider，无需关心底层差异。
-
 ## 快速开始
 
 ```bash
-# 1. 添加 Provider（自动探测 API 格式 + 拉取模型）
+# 1. 添加 DeepSeek（自动填 BASE_URL + 探测端点 + 拉模型）
 lmswitch provider add deepseek --api-key '${DEEPSEEK_API_KEY}'
 
 # 2. 测试模型（stream 模式: 延迟 + TTFT + 吞吐）
 lmswitch test deepseek
 
-# 3. 启动 Agent（自动注入环境变量）
-lmswitch launch codex --provider deepseek
+# 3. 启动 Claude Code
+lmswitch launch claude-code
 ```
 
-## 三个核心命令
+## 命令
 
 | 命令 | 作用 |
 |------|------|
-| `lmswitch launch` | 启动 AI Agent，自动注入配置 |
+| `lmswitch launch` | 启动 AI Agent，自动注入环境变量 |
 | `lmswitch test` | 测试模型延迟 / TTFT / 吞吐 |
-| `lmswitch provider` | 管理服务提供商 (add/rm/list/models) |
+| `lmswitch provider` | 管理服务提供商 (add/list/show/reload/remove) |
+| `lmswitch agent list` | 查看 Agent 绑定 |
+| `lmswitch doctor` | 配置健康检查 |
 
 ## 支持的 Agent
 
-`claude` · `claude-code` · `cline` · `codex` · `droid` · `opencode` · `openclaw` · `pi`
+`claude-code` · `cline` · `codex` · `droid` · `opencode` · `openclaw` · `pi`
 
 ## 支持的 Provider
 
-`openai` · `anthropic` · `deepseek` · `google` · `moonshot` · `zhipu` · `qwen` · `siliconflow` · `together` · `groq` · `openrouter` · `perplexity` · `cerebras` · `mistral` · `xai` · `minimax` · `fireworks` + 任意 OpenAI/Anthropic 兼容端点
+内置厂商（自动填 BASE_URL）:
 
-## 配置示例
+- `deepseek` — https://api.deepseek.com (openai + anthropic 双格式)
+- `anthropic` — https://api.anthropic.com
+- `openai` — https://api.openai.com
+
+任意 OpenAI / Anthropic 兼容端点:
+
+```bash
+lmswitch provider add my-proxy --api-base http://10.0.0.1:3000 --api-key '${MY_KEY}'
+```
+
+## 配置
 
 ```yaml
 # ~/.config/lmswitch/config.yaml
 providers:
   deepseek:
+    name: deepseek
+    api_key: ${DEEPSEEK_API_KEY}
     endpoints:
       openai: https://api.deepseek.com
-      anthropic: https://api.deepseek.com/anthropic
-    models: [deepseek-chat, deepseek-reasoner]
-    default_model: deepseek-chat
+      anthropic: https://api.deepseek.com
+    models: [deepseek-v4-pro, deepseek-v4-flash]
+    default_model: deepseek-v4-pro
 ```
+
+Agent 环境变量从 GitHub 远程配置自动获取，无需手动配置。
+离线时使用包内默认配置降级。
 
 ## 安全
 
-API Key 自动转为环境变量引用，禁止明文存储。
+API Key 支持环境变量引用 `${VAR}`，禁止明文存储：
 
 ```bash
-lmswitch provider add --api-base http://10.0.0.1:3000 --api-key '${MY_KEY}'
+lmswitch provider add deepseek --api-key '${DEEPSEEK_API_KEY}'
 ```
-
-## License
-
-MIT
