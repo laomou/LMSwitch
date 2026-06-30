@@ -11,7 +11,7 @@ from lmswitch.agents.registry import get_registry
 from lmswitch.core.config import ensure_config_exists
 from lmswitch.core.launcher import AgentLauncher, LaunchError
 from lmswitch.core.resolver import ConfigResolver
-from lmswitch.models.schema import AgentConfig
+from lmswitch.models.schema import AgentConfig, ProviderConfig, UnifiedConfig
 from lmswitch.models.types import AgentType
 
 
@@ -57,27 +57,25 @@ def launch(
     config, _ = ensure_config_exists()
 
     # ── provider 选择逻辑 ──
-    # 1. --provider 显式指定 > 2. YAML agent 绑定 > 3. 第一个 provider
+    # 优先级: --provider 显式指定 > YAML agent 绑定 > 交互式选择
     if provider:
         provider_key = provider
-        # 创建临时 AgentConfig（不写入 YAML）
-        agent_cfg = AgentConfig(
-            name=AgentType(agent_name),
-            provider=provider_key,
-            model=model,
-        )
-        # 如果 config 里没有这个 agent，临时注入
+        # config 里没有这个 agent 时临时注入（不写回 YAML）
         if agent_name not in config.agents:
-            config.agents[agent_name] = agent_cfg
+            config.agents[agent_name] = AgentConfig(
+                name=AgentType(agent_name),
+                provider=provider_key,
+                model=model,
+            )
     else:
         agent_cfg = config.agents.get(agent_name)
         if agent_cfg and agent_cfg.provider:
             provider_key = agent_cfg.provider
-        elif config.providers:
-            provider_key = next(iter(config.providers))
         else:
-            click.secho("无可用 Provider。请运行 'lmswitch provider add'", fg="red")
-            sys.exit(1)
+            # 既没显式指定也没绑定 → 让用户选 Provider（必要时再选 Model）
+            provider_key = _select_provider(config, agent_name, adapter.preferred_format)
+            if model is None:
+                model = _select_model(config.providers[provider_key])
 
     # 解析配置
     try:
@@ -97,7 +95,7 @@ def launch(
     launcher = AgentLauncher(adapter)
 
     click.echo(f"  LMSwitch v{__version__}")
-    click.echo(f"  {adapter.display_name} · {provider_key}")
+    click.echo(f"  {adapter.display_name} · {provider_key} · {resolved.agent.model or '默认模型'}")
     click.echo()
 
     try:
@@ -106,6 +104,78 @@ def launch(
     except LaunchError as e:
         click.secho(f"启动失败: {e}", fg="red")
         sys.exit(1)
+
+
+def _prompt_select(label: str, items: list[str], default: str | None = None) -> str:
+    """打印编号菜单让用户选择，返回选中项.
+
+    default 命中某项时，回车即选中该项.
+    """
+    default_idx: int | None = None
+    click.echo(f"  选择 {label}:")
+    for i, item in enumerate(items, 1):
+        suffix = ""
+        if default and item == default:
+            suffix = "  (默认)"
+            default_idx = i
+        click.echo(f"    {i}) {item}{suffix}")
+    idx = click.prompt(
+        "  输入编号",
+        type=click.IntRange(1, len(items)),
+        default=default_idx,
+        show_default=default_idx is not None,
+    )
+    return items[idx - 1]
+
+
+def _select_provider(config: UnifiedConfig, agent_name: str, preferred_format: str) -> str:
+    """无 --provider 且无 YAML 绑定时，选择 Provider.
+
+    只在「支持 agent 所需格式」的 Provider 中挑选:
+      - 0 个   → 报错退出
+      - 1 个   → 自动选用
+      - 多个   → TTY 弹菜单选择; 非 TTY 报错要求显式 --provider
+    """
+    if not config.providers:
+        click.secho("无可用 Provider。请运行 'lmswitch provider add'", fg="red")
+        sys.exit(1)
+
+    compatible = [k for k, p in config.providers.items() if preferred_format in p.endpoints]
+    if not compatible:
+        click.secho(
+            f"没有支持 {preferred_format} 格式的 Provider。"
+            f"已配置: {', '.join(config.providers)}",
+            fg="red",
+        )
+        sys.exit(1)
+
+    if len(compatible) == 1:
+        click.echo(f"  使用 Provider: {compatible[0]}")
+        return compatible[0]
+
+    if not sys.stdin.isatty():
+        click.secho(
+            f"'{agent_name}' 未绑定 Provider，且未指定 --provider。"
+            f"请用 --provider 指定 (可选: {', '.join(compatible)})",
+            fg="red",
+        )
+        sys.exit(1)
+
+    return _prompt_select("Provider", compatible)
+
+
+def _select_model(provider_cfg: ProviderConfig) -> str | None:
+    """Provider 选定后选择 Model.
+
+    返回 None 表示沿用 Provider 的 default_model:
+      - 模型 ≤1 个 或 非 TTY → None
+      - 多个 → 弹菜单, default_model 高亮为默认项
+    """
+    models = provider_cfg.models
+    if len(models) <= 1 or not sys.stdin.isatty():
+        return None
+    default = provider_cfg.default_model or models[0]
+    return _prompt_select("Model", models, default=default)
 
 
 def _list_available_agents(registry) -> None:
