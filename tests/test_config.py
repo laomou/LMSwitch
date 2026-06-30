@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from lmswitch.core.config import (
@@ -22,7 +24,7 @@ class TestConfigPath:
 
     def test_explicit_path(self):
         path = config_path("/tmp/my-config.yaml")
-        assert path == path  # Path comparison
+        assert path == Path("/tmp/my-config.yaml")
 
     def test_env_override(self, monkeypatch):
         monkeypatch.setenv("LMSWITCH_CONFIG", "/tmp/env-config.yaml")
