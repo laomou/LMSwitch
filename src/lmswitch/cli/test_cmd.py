@@ -3,28 +3,98 @@
 from __future__ import annotations
 
 import json
-import sys
 
 import click
 
 from lmswitch.core.config import ensure_config_exists
 from lmswitch.core.resolver import ConfigResolver
-from lmswitch.providers.registry import get_provider
 from lmswitch.models.schema import ProviderConfig, TestResult
+from lmswitch.providers.registry import get_provider
 
 
-def _make_provider(pc):
-    return get_provider(pc)
+# ── helpers ──
+
+def _resolve(config, name: str):
+    """解析 Provider 名称 → (ProviderConfig, Provider 实例)."""
+    try:
+        pc = ConfigResolver(config).get_provider(name)
+    except KeyError:
+        raise click.ClickException(f"Provider 未配置: {name}")
+    p = get_provider(pc)
+    if p is None:
+        raise click.ClickException(f"不支持的 Provider: {pc.name.value}")
+    return pc, p
 
 
-def _first_endpoint(pc: ProviderConfig) -> str:
+def _test_models(pc, p, provider_key: str, stream: bool = False) -> list[TestResult]:
+    """测试 provider 所有模型，stream=True 时逐个输出."""
+    results: list[TestResult] = []
+    models = [m for m in (pc.models or p.list_models()) if m]
+    mw = max((len(m) for m in models), default=5)
+    sw, lw, tw, pw = 14, 8, 8, 8  # status, latency, ttft, tps
+    if stream and models:
+        click.echo(f"Provider: {provider_key}")
+        click.echo(f"{'Model':<{mw}}  {'Status':<{sw}}  {'Total':<{lw}}  {'TTFT':<{tw}}  {'TPS':<{pw}}")
+        click.echo(f"{'-'*mw}  {'-'*sw}  {'-'*lw}  {'-'*tw}  {'-'*pw}")
+    for model in models:
+        r = p.test_model(model, pc.api_key, _base(pc), provider_key=provider_key)
+        results.append(r)
+        if stream:
+            click.echo(f"{r.model:<{mw}}  {_icon(r.status):<2}{r.status:<{sw-2}} {_pad(r.latency_ms):<{lw}}  {_pad(r.ttft_ms):<{tw}}  {_pad(r.tokens_per_sec):<{pw}}")
+    return results
+
+
+# ── output ──
+
+def _base(pc: ProviderConfig) -> str:
     return next(iter(pc.endpoints.values()), "") if pc.endpoints else ""
 
 
+def _icon(status: str) -> str:
+    return {"ok": "✅", "timeout": "⏳", "error": "❌", "unauthorized": "❌"}.get(status, "❓")
+
+
+def _pad(val: float) -> str:
+    """格式化数值: ms/s 或 `-`."""
+    if val <= 0:
+        return "-"
+    if val < 1000:
+        return f"{val:.0f}ms"
+    return f"{val/1000:.1f}s"
+
+
+def _print_table(results: list[TestResult]) -> None:
+    """表格打印测试结果."""
+    if not results:
+        return
+
+    mw = max(max(len(r.model) for r in results), 5)
+    sw, lw, tw, pw = 14, 8, 8, 8  # status, latency, ttft, tps
+
+    click.echo(f"Provider: {results[0].provider}")
+    click.echo(f"{'Model':<{mw}}  {'Status':<{sw}}  {'Total':<{lw}}  {'TTFT':<{tw}}  {'TPS':<{pw}}")
+    click.echo(f"{'-'*mw}  {'-'*sw}  {'-'*lw}  {'-'*tw}  {'-'*pw}")
+
+    for r in results:
+        click.echo(
+            f"{r.model:<{mw}}  "
+            f"{_icon(r.status):<2}{r.status:<{sw - 2}} "
+            f"{_pad(r.latency_ms):<{lw}}  "
+            f"{_pad(r.ttft_ms):<{tw}}  "
+            f"{_pad(r.tokens_per_sec):<{pw}}"
+        )
+
+
+def _print_json(results: list[TestResult]) -> None:
+    click.echo(json.dumps([r.model_dump(mode="json") for r in results], indent=2, ensure_ascii=False))
+
+
+# ── command ──
+
 @click.command(name="test")
 @click.argument("target", required=False)
-@click.option("--format", "output_format", type=click.Choice(["text", "json"]), default="text", help="输出格式")
-def test(target: str | None, output_format: str) -> None:
+@click.option("--format", "fmt", type=click.Choice(["text", "json"]), default="text", help="输出格式")
+def test(target: str | None, fmt: str) -> None:
     """测试模型可用性和延迟 (stream 模式).
 
     \b
@@ -35,111 +105,28 @@ def test(target: str | None, output_format: str) -> None:
       lmswitch test --format json             # JSON 输出
     """
     config, _ = ensure_config_exists()
-    results: list[TestResult] = []
 
     if target and ":" in target:
+        # 单模型
         pn, model = target.split(":", 1)
-        results = _test_model(config, pn, model)
+        pc, p = _resolve(config, pn)
+        r = p.test_model(model, pc.api_key, _base(pc), provider_key=pn)
+        _print_table([r]) if fmt == "text" else _print_json([r])
+
     elif target:
-        results = _test_provider_models(config, target)
-    if results and output_format == "json":
-        click.echo(json.dumps([r.model_dump(mode="json") for r in results], indent=2, ensure_ascii=False))
-    elif results:
-        _print_results_table(results)
+        # 单个 Provider → 流式输出
+        pc, p = _resolve(config, target)
+        results = _test_models(pc, p, target, stream=True)
+        if fmt == "json":
+            _print_json(results)
+
     else:
+        # 全部 Provider → 分组表格
         for pk, pc in config.providers.items():
-            p = _make_provider(pc)
+            p = get_provider(pc)
             if p is None:
                 continue
-            group: list[TestResult] = []
-            for model in (pc.models or p.list_models()):
-                if model:
-                    r = p.test_model(model, pc.api_key, api_base=_first_endpoint(pc), provider_key=pk)
-                    results.append(r)
-                    group.append(r)
+            group = _test_models(pc, p, pk)
             if group:
-                _print_results_table(group)
+                _print_table(group)
                 click.echo()
-
-
-def _test_model(config, provider_name: str, model: str) -> list[TestResult]:
-    resolver = ConfigResolver(config)
-    try:
-        pc = resolver.get_provider(provider_name)
-    except KeyError as e:
-        click.secho(f"Provider 未配置: {e}", fg="red")
-        sys.exit(1)
-    p = _make_provider(pc)
-    if p is None:
-        click.secho(f"不支持的 Provider: {pc.name.value}", fg="red")
-        sys.exit(1)
-    return [p.test_model(model, pc.api_key, api_base=_first_endpoint(pc), provider_key=provider_name)]
-
-
-def _test_provider_models(config, provider_name: str) -> list[TestResult]:
-    try:
-        pc = ConfigResolver(config).get_provider(provider_name)
-    except KeyError as e:
-        click.secho(f"Provider 未配置: {e}", fg="red")
-        return []
-    except ValueError as e:
-        click.secho(f"配置错误: {e}", fg="red")
-        return []
-    p = _make_provider(pc)
-    if p is None:
-        return []
-    results = []
-    for model in (pc.models or p.list_models()):
-        results.append(p.test_model(model, pc.api_key, api_base=_first_endpoint(pc), provider_key=provider_name))
-    return results
-
-
-def _print_results_table(results: list[TestResult]) -> None:
-    """以表格形式打印测试结果."""
-    if not results:
-        click.echo("  无结果")
-        return
-
-    # 取第一个结果的 provider 作为标题
-    provider_name = results[0].provider
-
-    model_w = max(max(len(r.model) for r in results), 5)
-    status_w = 12
-    latency_w = 7
-    ttft_w = 6
-    tps_w = 8
-
-    click.echo(f"Provider: {provider_name}")
-    click.echo(
-        f"{'Model':<{model_w}}  "
-        f"{'Status':<{status_w}}  {'Total':>{latency_w}}  {'TTFT':>{ttft_w}}  {'TPS':>{tps_w}}"
-    )
-    click.echo(f"{'-' * model_w}  {'-' * status_w}  {'-' * latency_w}  {'-' * ttft_w}  {'-' * tps_w}")
-
-    for r in results:
-        icon = _status_icon(r.status)
-        click.echo(
-            f"{r.model:<{model_w}}  "
-            f"{icon} {r.status:<{status_w - 2}}  "
-            f"{_fmt_ms(r.latency_ms):>{latency_w}}  "
-            f"{_fmt_ms(r.ttft_ms):>{ttft_w}}  "
-            f"{_fmt_tps(r.tokens_per_sec):>{tps_w}}"
-        )
-
-
-def _status_icon(status: str) -> str:
-    return {"ok": "✅", "timeout": "⏱️", "error": "❌", "unauthorized": "🔒"}.get(status, "❓")
-
-
-def _fmt_ms(ms: float) -> str:
-    if ms <= 0:
-        return "  -"
-    if ms < 1000:
-        return f"{ms:4.0f}ms"
-    return f"{ms/1000:.1f}s"
-
-
-def _fmt_tps(tps: float) -> str:
-    if tps <= 0:
-        return "  -"
-    return f"{tps:5.0f}/s"

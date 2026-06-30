@@ -292,8 +292,14 @@ def add_provider(name: str | None, api_base: str | None, api_key: str | None,
         click.echo(f"  ✓ 可用格式: {', '.join(endpoints.keys())}")
     else:
         click.echo(f"  ⚠ 无法自动探测，手动选择格式")
-        fmt = click.prompt("API 格式", type=click.Choice(["openai", "anthropic"]), default="openai")
-        endpoints = {fmt: api_base}
+        fmt_str = click.prompt("API 格式 (openai/anthropic, 逗号分隔)", default="openai")
+        endpoints = {}
+        for f in fmt_str.split(","):
+            f = f.strip()
+            if f in ("openai", "anthropic"):
+                endpoints[f] = api_base
+        if not endpoints:
+            endpoints = {"openai": api_base}
 
     # ── 拉取模型 ──
     if not model_list and "openai" in endpoints and _is_plaintext_key(api_key):
