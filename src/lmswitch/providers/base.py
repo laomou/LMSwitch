@@ -38,7 +38,7 @@ class Provider(ABC):
         2. 包内 providers/{name}.json (默认)
 
         Args:
-            agent_name: Agent 名称 (如 "claude-code").
+            agent_name: Agent 名称 (如 "claude").
 
         Returns:
             环境变量字典，无配置时返回 {}.

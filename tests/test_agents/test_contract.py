@@ -10,8 +10,8 @@ import re
 
 import pytest
 
+from lmswitch.agents.base import openai_base_url
 from lmswitch.agents.claude import Claude
-from lmswitch.agents.claude_code import ClaudeCode
 from lmswitch.agents.cline import Cline
 from lmswitch.agents.codex import Codex
 from lmswitch.agents.droid import Droid
@@ -24,7 +24,7 @@ from lmswitch.models.types import ProviderType
 # POSIX 环境变量名: 字母/下划线开头，后续字母数字下划线
 _ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
-ADAPTERS = [Claude(), ClaudeCode(), Cline(), Codex(), Droid(), OpenCode(), OpenClaw(), Pi()]
+ADAPTERS = [Claude(), Cline(), Codex(), Droid(), OpenCode(), OpenClaw(), Pi()]
 
 
 def _resolved_for(adapter) -> ResolvedConfig:
@@ -78,3 +78,20 @@ def test_cline_anthropic_branch():
     env = Cline().env_vars(rc)
     assert env["ANTHROPIC_API_KEY"] == "sk-x"
     assert env["ANTHROPIC_BASE_URL"] == "https://api.anthropic.com"
+
+
+def test_openai_base_url_appends_v1():
+    assert openai_base_url("https://api.deepseek.com") == "https://api.deepseek.com/v1"
+    assert openai_base_url("https://api.deepseek.com/") == "https://api.deepseek.com/v1"
+    assert openai_base_url("https://api.x.com/v1") == "https://api.x.com/v1"
+
+
+def test_codex_base_url_has_v1():
+    env = Codex().env_vars(_resolved_for(Codex()))
+    assert env["OPENAI_BASE_URL"].endswith("/v1")
+
+
+def test_opencode_base_url_v1_and_no_model_env():
+    env = OpenCode().env_vars(_resolved_for(OpenCode()))
+    assert env["OPENAI_BASE_URL"].endswith("/v1")
+    assert "OPENCODE_MODEL" not in env

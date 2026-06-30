@@ -1,5 +1,5 @@
 {
-  "claude-code": {
+  "claude": {
     "ANTHROPIC_MODEL": "deepseek-v4-pro[1m]",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "deepseek-v4-pro[1m]",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v4-pro[1m]",

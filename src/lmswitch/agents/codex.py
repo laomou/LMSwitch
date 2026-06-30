@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from lmswitch.agents.base import Agent
+from lmswitch.agents.base import Agent, openai_base_url
 from lmswitch.models.schema import ResolvedConfig
 from lmswitch.models.types import AgentType
 
@@ -12,6 +12,10 @@ class Codex(Agent):
 
     需要环境变量:
     - OPENAI_API_KEY
+    - OPENAI_BASE_URL (以 /v1 结尾，重定向内置 openai provider)
+
+    注意: 自 2026/02 起 Codex 仅支持 Responses API (/v1/responses)，
+    仅支持 Chat Completions 的 provider 需经 LiteLLM 之类代理。
     """
 
     name = AgentType.CODEX
@@ -23,7 +27,7 @@ class Codex(Agent):
             "OPENAI_API_KEY": config.provider.api_key,
         }
         if config.effective_api_base:
-            env["OPENAI_BASE_URL"] = config.effective_api_base
+            env["OPENAI_BASE_URL"] = openai_base_url(config.effective_api_base)
         return env
 
     def launch_command(self, config: ResolvedConfig) -> list[str]:

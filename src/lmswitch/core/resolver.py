@@ -93,7 +93,7 @@ class ConfigResolver:
         """解析指定 Agent 的完整配置.
 
         Args:
-            agent_name: Agent 名称 (如 'claude-code').
+            agent_name: Agent 名称 (如 'claude').
             preferred_format: Agent 需要的 API 格式 ("openai" / "anthropic").
             provider_key: 覆盖 Agent 绑定的 Provider.
 

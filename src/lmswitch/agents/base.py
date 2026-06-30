@@ -8,6 +8,12 @@ from lmswitch.models.schema import ResolvedConfig
 from lmswitch.models.types import AgentType
 
 
+def openai_base_url(api_base: str) -> str:
+    """OpenAI 兼容 CLI 约定 base_url 以 /v1 结尾 (codex/opencode 等)."""
+    b = api_base.rstrip("/")
+    return b if b.endswith("/v1") else f"{b}/v1"
+
+
 class Agent(ABC):
     """Agent 基类.
 

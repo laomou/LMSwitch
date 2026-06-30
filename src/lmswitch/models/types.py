@@ -16,7 +16,6 @@ class AgentType(str, Enum):
     """AI Agent 类型."""
 
     CLAUDE = "claude"
-    CLAUDE_CODE = "claude-code"
     CLINE = "cline"
     CODEX = "codex"
     DROID = "droid"

@@ -33,7 +33,7 @@ def provider_config():
 def agent_config():
     """标准 Claude Code Agent 配置."""
     return AgentConfig(
-        name=AgentType.CLAUDE_CODE,
+        name=AgentType.CLAUDE,
         provider="anthropic",
         model="claude-sonnet-4-6",
     )

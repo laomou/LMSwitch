@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from lmswitch.agents.base import Agent
-from lmswitch.agents.claude_code import ClaudeCode
+from lmswitch.agents.claude import Claude
 from lmswitch.core import launcher as launcher_mod
 from lmswitch.core.launcher import AgentLauncher, LaunchError
 from lmswitch.models.schema import AgentConfig, ProviderConfig, ResolvedConfig
@@ -15,8 +15,8 @@ from lmswitch.models.types import AgentType, ProviderType
 class TestAdapterEnvVars:
     """adapter 产出的环境变量（launcher 的输入）."""
 
-    def test_claude_code_env(self, resolved_config):
-        env = ClaudeCode().env_vars(resolved_config)
+    def test_claude_env(self, resolved_config):
+        env = Claude().env_vars(resolved_config)
         assert "ANTHROPIC_AUTH_TOKEN" in env
         assert "ANTHROPIC_BASE_URL" in env
 

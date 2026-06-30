@@ -61,12 +61,12 @@ class TestSelectProvider:
             "oa": _provider("openai"),
             "an": _provider("anthropic"),
         })
-        assert _select_provider(cfg, "claude-code", "anthropic") == "an"
+        assert _select_provider(cfg, "claude", "anthropic") == "an"
 
     def test_no_compatible_exits(self):
         cfg = UnifiedConfig(providers={"oa": _provider("openai")})
         with pytest.raises(SystemExit):
-            _select_provider(cfg, "claude-code", "anthropic")
+            _select_provider(cfg, "claude", "anthropic")
 
     def test_no_providers_exits(self):
         with pytest.raises(SystemExit):
@@ -124,7 +124,7 @@ class TestPromptSelect:
 class _FakeAdapter:
     preferred_format = "anthropic"
     display_name = "Claude Code"
-    name = AgentType.CLAUDE_CODE
+    name = AgentType.CLAUDE
 
 
 class _FakeRegistry:
@@ -135,7 +135,7 @@ class _FakeRegistry:
         return [_FakeAdapter()]
 
     def names(self):
-        return ["claude-code"]
+        return ["claude"]
 
 
 class _FakeLauncher:
@@ -165,8 +165,8 @@ class TestLaunchBinding:
                 "anthropic2": _provider("anthropic", models=["m1"], default="m1"),
             },
             agents={
-                "claude-code": AgentConfig(
-                    name=AgentType.CLAUDE_CODE, provider="anthropic", model="bound-model",
+                "claude": AgentConfig(
+                    name=AgentType.CLAUDE, provider="anthropic", model="bound-model",
                 ),
             },
         )
@@ -174,7 +174,7 @@ class TestLaunchBinding:
         monkeypatch.setattr(launch_mod, "ensure_config_exists", lambda: (cfg, Path("cfg")))
         monkeypatch.setattr(launch_mod, "AgentLauncher", _FakeLauncher)
 
-        result = CliRunner().invoke(launch, ["claude-code"])
+        result = CliRunner().invoke(launch, ["claude"])
 
         assert result.exit_code == 0
         assert _FakeLauncher.last["provider_key"] == "anthropic"
@@ -186,7 +186,7 @@ class _EmptyRegistry:
         return None
 
     def names(self):
-        return ["claude-code"]
+        return ["claude"]
 
 
 class TestLaunchCommand:
@@ -196,7 +196,7 @@ class TestLaunchCommand:
         monkeypatch.setattr(launch_mod, "get_registry", lambda: _FakeRegistry())
         r = CliRunner().invoke(launch, ["--list"])
         assert r.exit_code == 0
-        assert "claude-code" in r.output
+        assert "claude" in r.output
 
     def test_no_agent_name_exits(self, monkeypatch):
         monkeypatch.setattr(launch_mod, "get_registry", lambda: _FakeRegistry())
@@ -205,7 +205,7 @@ class TestLaunchCommand:
 
     def test_unknown_agent_exits(self, monkeypatch):
         monkeypatch.setattr(launch_mod, "get_registry", lambda: _EmptyRegistry())
-        r = CliRunner().invoke(launch, ["claude-code"])
+        r = CliRunner().invoke(launch, ["claude"])
         assert r.exit_code == 1
 
     def test_explicit_provider_and_model(self, monkeypatch):
@@ -216,7 +216,7 @@ class TestLaunchCommand:
         monkeypatch.setattr(launch_mod, "get_registry", lambda: _FakeRegistry())
         monkeypatch.setattr(launch_mod, "ensure_config_exists", lambda: (cfg, Path("cfg")))
         monkeypatch.setattr(launch_mod, "AgentLauncher", _FakeLauncher)
-        r = CliRunner().invoke(launch, ["claude-code", "-P", "prox", "-m", "mymodel"])
+        r = CliRunner().invoke(launch, ["claude", "-P", "prox", "-m", "mymodel"])
         assert r.exit_code == 0
         assert _FakeLauncher.last["provider_key"] == "prox"
         assert _FakeLauncher.last["model"] == "mymodel"

@@ -12,7 +12,7 @@ requires-python = ">=3.10"
 authors = [
     {name = "mourui"}
 ]
-keywords = ["ai-agent", "cli", "claude-code", "codex", "configuration"]
+keywords = ["ai-agent", "cli", "claude", "codex", "configuration"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
@@ -43,8 +43,7 @@ dev = [
 lmswitch = "lmswitch.main:cli"
 
 [project.entry-points."lmswitch.agents"]
-claude = "lmswitch.agents.claude:ClaudeAdapter"
-claude-code = "lmswitch.agents.claude_code:ClaudeCode"
+claude = "lmswitch.agents.claude:Claude"
 cline = "lmswitch.agents.cline:Cline"
 codex = "lmswitch.agents.codex:Codex"
 droid = "lmswitch.agents.droid:Droid"

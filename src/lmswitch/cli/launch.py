@@ -32,9 +32,9 @@ def launch(
 
     \b
     示例:
-      lmswitch launch claude-code                           # 使用 YAML 绑定的 Provider
+      lmswitch launch claude                                # 使用 YAML 绑定的 Provider
       lmswitch launch codex --provider deepseek             # 直接指定 Provider
-      lmswitch launch claude-code --model claude-opus-4-8   # 覆盖模型
+      lmswitch launch claude --model claude-opus-4-8        # 覆盖模型
       lmswitch launch --list                                # 列出 Agent
     """
     registry = get_registry()

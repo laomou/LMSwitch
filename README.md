@@ -16,7 +16,7 @@ lmswitch provider add deepseek --api-key '${DEEPSEEK_API_KEY}'
 lmswitch test deepseek
 
 # 3. 启动 Claude Code
-lmswitch launch claude-code
+lmswitch launch claude
 ```
 
 ## 命令
@@ -30,7 +30,7 @@ lmswitch launch claude-code
 
 ## 支持的 Agent
 
-`claude-code` · `cline` · `codex` · `droid` · `opencode` · `openclaw` · `pi`
+`claude` · `cline` · `codex` · `droid` · `opencode` · `openclaw` · `pi`
 
 ## 支持的 Provider
 
