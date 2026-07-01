@@ -25,9 +25,18 @@ def _complete_agents(ctx: click.Context, param: click.Parameter, incomplete: str
     ]
 
 
+def _complete_providers(ctx: click.Context, param: click.Parameter, incomplete: str) -> list[Any]:
+    """Tab 补全: Provider 名称."""
+    config, _ = ensure_config_exists()
+    return [
+        click.shell_completion.CompletionItem(name)
+        for name in config.providers if name.startswith(incomplete)
+    ]
+
+
 @click.command(name="launch")
 @click.argument("agent_name", required=False, shell_complete=_complete_agents)
-@click.option("--provider", "-P", default=None, help="指定 Provider (覆盖 YAML 绑定)")
+@click.option("--provider", "-P", default=None, help="指定 Provider (覆盖 YAML 绑定)", shell_complete=_complete_providers)
 @click.option("--model", "-m", default=None, help="覆盖默认模型")
 @click.option("--project", "-p", default=None, help="指定项目/工作目录")
 @click.option("--list", "list_agents", is_flag=True, default=False, help="列出所有可启动的 Agent")

@@ -6,11 +6,21 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
 import click
 import httpx
 
 from agentfly.core.config import ensure_config_exists
+
+
+def _complete_providers(ctx: click.Context, param: click.Parameter, incomplete: str) -> list[Any]:
+    """Tab 补全: Provider 名称."""
+    config, _ = ensure_config_exists()
+    return [
+        click.shell_completion.CompletionItem(name)
+        for name in config.providers if name.startswith(incomplete)
+    ]
 from agentfly.models.schema import ProviderConfig
 from agentfly.models.types import ProviderType
 from agentfly.providers.manager import ProviderManager
@@ -332,7 +342,7 @@ def add_provider(name: str | None, api_base: str | None, api_key: str | None,
 
 
 @provider_group.command(name="reload")
-@click.argument("name")
+@click.argument("name", shell_complete=_complete_providers)
 def reload_models(name: str):
     """从 API 重新拉取 Provider 模型列表.
 
@@ -371,7 +381,7 @@ def reload_models(name: str):
 
 
 @provider_group.command(name="remove")
-@click.argument("name")
+@click.argument("name", shell_complete=_complete_providers)
 def remove_provider(name: str):
     """删除 Provider 配置."""
     config, cfg_path = ensure_config_exists()
@@ -389,7 +399,7 @@ def remove_provider(name: str):
 
 
 @provider_group.command(name="show")
-@click.argument("name")
+@click.argument("name", shell_complete=_complete_providers)
 def show_provider(name: str):
     """查看 Provider 详情."""
     config, _ = ensure_config_exists()
