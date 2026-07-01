@@ -24,9 +24,6 @@ class OpenAIProvider(Provider):
     def list_models(self) -> list[str]:
         return OPENAI_MODELS
 
-    def _test_endpoint(self, model: str) -> str:
-        return "/v1/chat/completions"
-
     def _build_test_request(self, model: str) -> dict:
         return {
             "model": model,

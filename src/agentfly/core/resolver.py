@@ -53,7 +53,7 @@ def _resolve_provider(provider: ProviderConfig) -> ProviderConfig:
     )
 
 
-SUPPORTED_FORMATS: dict[str, tuple[str, ...]] = {
+SUPPORTED_FORMATS: dict[ProviderType, tuple[str, ...]] = {
     ProviderType.CUSTOM: ("openai", "anthropic"),
     ProviderType.OPENAI: ("openai",),
     ProviderType.ANTHROPIC: ("anthropic",),

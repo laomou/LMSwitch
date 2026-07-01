@@ -47,10 +47,8 @@ class AnthropicProvider(Provider):
             return None
         try:
             event = json.loads(line[6:])
-            if event.get("type") == "content_block_delta":
-                return event.get("delta", {}).get("text", "")
-            if event.get("type") == "message_delta":
-                return None
         except json.JSONDecodeError:
-            pass
+            return None
+        if event.get("type") == "content_block_delta":
+            return event.get("delta", {}).get("text", "")
         return None

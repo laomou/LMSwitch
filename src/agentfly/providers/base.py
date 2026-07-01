@@ -12,6 +12,8 @@ import httpx
 from agentfly.models.schema import ProviderConfig, TestResult
 from agentfly.models.types import ProviderType
 
+_STREAM_TIMEOUT_S = 30.0
+
 
 class Provider(ABC):
     """服务提供商的抽象基类.
@@ -25,55 +27,55 @@ class Provider(ABC):
     name: ProviderType
     display_name: str = ""
 
+    _ENV_CACHE: dict[str, dict] = {}
+
     def __init__(self, config: ProviderConfig):
         self.config = config
 
-    _ENV_CACHE: dict[str, dict] = {}
+    # ── env ──
 
     def env_for(self, agent_name: str) -> dict[str, str]:
         """返回该 Provider 给指定 Agent 的补充环境变量.
 
-        读取顺序:
-        1. ~/.config/agentfly/env/{name}.json (provider add/reload 缓存)
-        2. 包内 providers/{name}.json (默认)
-
-        Args:
-            agent_name: Agent 名称 (如 "claude").
-
-        Returns:
-            环境变量字典，无配置时返回 {}.
+        读取顺序: ~/.config/agentfly/env/{name}.json → 包内 providers/{name}.json.
         """
         name = self.name.value
         key = f"{name}:{agent_name}"
         if key in self._ENV_CACHE:
             return self._ENV_CACHE[key]
 
-        # 用户缓存 → 包默认
-        candidates = [
+        for env_file in (
             Path.home() / ".config" / "agentfly" / "env" / f"{name}.json",
             Path(__file__).parent / f"{name}.json",
-        ]
-        for env_file in candidates:
-            if env_file.exists():
-                try:
-                    data = json.loads(env_file.read_text())
-                    result = data.get(agent_name, {})
-                    self._ENV_CACHE[key] = result
-                    return result
-                except (json.JSONDecodeError, OSError):
-                    pass
+        ):
+            if not env_file.exists():
+                continue
+            try:
+                data = json.loads(env_file.read_text())
+                result = data.get(agent_name, {})
+                self._ENV_CACHE[key] = result
+                return result
+            except (json.JSONDecodeError, OSError):
+                pass
 
         self._ENV_CACHE[key] = {}
         return {}
+
+    # ── 子类契约 ──
 
     @abstractmethod
     def list_models(self) -> list[str]:
         """返回该 Provider 的已知模型列表."""
         ...
 
+    @abstractmethod
+    def _build_test_request(self, model: str):
+        """构建测试请求 (stream=True 由 test_model 自动添加)."""
+        ...
+
     def _test_endpoint(self, model: str) -> str:
-        """返回默认识别的 API endpoint."""
-        raise NotImplementedError  # pragma: no cover
+        """API 路径, 默认 OpenAI 兼容 /v1/chat/completions."""
+        return "/v1/chat/completions"
 
     def _request_headers(self, model: str, api_key: str) -> dict[str, str]:
         """默认 Bearer 鉴权头."""
@@ -82,40 +84,41 @@ class Provider(ABC):
             "Content-Type": "application/json",
         }
 
-    @abstractmethod
-    def _build_test_request(self, model: str):
-        """构建测试请求 (需包含 stream: True 以测 TTFT)."""
-        ...
-
     def _parse_stream_chunk(self, line: str) -> str | None:
-        """解析 SSE 流中的一行 (OpenAI 格式), 返回 delta content 或 None.
-
-        兼容 reasoning 模型（先出 reasoning_content 再出 content）.
-        """
-        if line.startswith("data: "):
-            data_str = line[6:]
-            if data_str == "[DONE]":
-                return None
-            try:
-                chunk = json.loads(data_str)
-                choices = chunk.get("choices", [])
-                if choices:
-                    delta = choices[0].get("delta", {})
-                    return delta.get("content") or delta.get("reasoning_content") or ""
-            except json.JSONDecodeError:
-                pass
-        return None
+        """解析 SSE 一行 (OpenAI 格式). 兼容 reasoning 模型."""
+        if not line.startswith("data: "):
+            return None
+        data_str = line[6:]
+        if data_str == "[DONE]":
+            return None
+        try:
+            chunk = json.loads(data_str)
+        except json.JSONDecodeError:
+            return None
+        choices = chunk.get("choices")
+        if not choices:
+            return None
+        delta = choices[0].get("delta", {})
+        return delta.get("content") or delta.get("reasoning_content") or ""
 
     def _test_candidates(
         self, model: str, api_key: str, base: str,
     ) -> list[tuple[str, dict, str]]:
         """返回 (url, headers, endpoint_key) 候选列表.
 
-        endpoint_key 用于缓存 (如 "openai" / "anthropic"), 单端点 Provider 传 "".
+        endpoint_key 用于缓存 (如 "openai"/"anthropic"), 单端点 Provider 传 "".
+        子类覆写以实现多端点回退.
         """
-        url = f"{base.rstrip('/')}{self._test_endpoint(model)}"
-        headers = self._request_headers(model, api_key)
-        return [(url, headers, "")]
+        return [(
+            f"{base.rstrip('/')}{self._test_endpoint(model)}",
+            self._request_headers(model, api_key),
+            "",
+        )]
+
+    def _on_test_ok(self, model: str, ep_key: str, idx: int) -> None:
+        """成功回调. 子类覆写以缓存跑通的 endpoint_key."""
+
+    # ── 主流程 ──
 
     def test_model(
         self,
@@ -124,30 +127,24 @@ class Provider(ABC):
         api_base: str | None = None,
         provider_key: str = "",
     ) -> TestResult:
-        """测试模型 (stream 模式): TTFT + 吞吐 + 总延迟.
+        """流式测试模型: TTFT + 吞吐 + 总延迟.
 
-        400/404 自动回退到下一个候选端点; 401/403/超时/连接不上直接返回.
-        成功时若涉及回退则缓存 endpoint_key.
+        400/404 自动回退到下一个候选端点; 其他错误直接返回.
         """
         pkey = provider_key or self.config.name.value
         key = api_key or self.config.api_key
         base = api_base or self.config.base_url
-        body = self._build_test_request(model)
-        body["stream"] = True
+        body = {**self._build_test_request(model), "stream": True}
 
         candidates = self._test_candidates(model, key, base)
-        last_error: str = ""
+        last_error = ""
 
         for idx, (url, headers, ep_key) in enumerate(candidates):
             result = self._do_test(pkey, model, url, body, headers)
             if result.status == "ok":
                 self._on_test_ok(model, ep_key, idx)
                 return result
-            # 非 error → 401/403/超时/连接不上, 不回退
-            if result.status != "error":
-                return result
-            # 400/404 才回退; 其他 error 码 (500 等) 也直接返回
-            if "400" not in result.error_message and "404" not in result.error_message:
+            if not _should_fallback(result):
                 return result
             last_error = result.error_message or last_error
 
@@ -157,53 +154,39 @@ class Provider(ABC):
             error_message=last_error or "所有接口均失败",
         )
 
-    # ── 单次测试 ──
-
-    def _on_test_ok(self, model: str, ep_key: str, idx: int) -> None:
-        """成功回调 — 子类可覆写以缓存 endpoint_key."""
-        return
-
     def _do_test(
         self, pkey: str, model: str, url: str, body: dict, headers: dict,
     ) -> TestResult:
-        """执行一次流式测试并返回结果."""
+        """执行一次流式测试."""
+        def result(**kw) -> TestResult:
+            return TestResult(provider=pkey, model=model, **kw)
+
         try:
             t_start = time.monotonic()
             ttft_ms = 0.0
             token_count = 0
 
-            with httpx.Client(timeout=httpx.Timeout(30.0)) as client:
-                with client.stream(
-                    "POST", url, json=body, headers=headers,
-                ) as resp:
+            with httpx.Client(timeout=httpx.Timeout(_STREAM_TIMEOUT_S)) as client:
+                with client.stream("POST", url, json=body, headers=headers) as resp:
                     if resp.status_code in (401, 403):
-                        return TestResult(
-                            provider=pkey, model=model,
-                            status="unauthorized",
-                            error_message=f"HTTP {resp.status_code}",
-                        )
+                        return result(status="unauthorized", error_message=f"HTTP {resp.status_code}")
                     if resp.status_code != 200:
-                        return TestResult(
-                            provider=pkey, model=model,
-                            status="error",
-                            error_message=f"HTTP {resp.status_code}",
-                        )
+                        return result(status="error", error_message=f"HTTP {resp.status_code}")
 
                     first_token = True
                     for line in resp.iter_lines():
                         content = self._parse_stream_chunk(line)
-                        if content:
-                            if first_token:
-                                ttft_ms = (time.monotonic() - t_start) * 1000
-                                first_token = False
-                            token_count += len(content) // 4 or 1  # rough estimate
+                        if not content:
+                            continue
+                        if first_token:
+                            ttft_ms = (time.monotonic() - t_start) * 1000
+                            first_token = False
+                        token_count += len(content) // 4 or 1
 
             total_ms = (time.monotonic() - t_start) * 1000
-            total_s = total_ms / 1000
-            tps = token_count / total_s if total_s > 0 else 0
+            tps = token_count * 1000 / total_ms if total_ms > 0 else 0
 
-            return TestResult(
-                provider=pkey, model=model,
+            return result(
                 status="ok",
                 latency_ms=round(total_ms, 1),
                 ttft_ms=round(ttft_ms, 1),
@@ -211,17 +194,16 @@ class Provider(ABC):
             )
 
         except httpx.TimeoutException:
-            return TestResult(
-                provider=pkey, model=model,
-                status="timeout", error_message="请求超时 (30s)",
-            )
+            return result(status="timeout", error_message=f"请求超时 ({int(_STREAM_TIMEOUT_S)}s)")
         except httpx.ConnectError:
-            return TestResult(
-                provider=pkey, model=model,
-                status="error", error_message="无法连接",
-            )
+            return result(status="error", error_message="无法连接")
         except Exception as e:
-            return TestResult(
-                provider=pkey, model=model,
-                status="error", error_message=str(e)[:200],
-            )
+            return result(status="error", error_message=str(e)[:200])
+
+
+def _should_fallback(result: TestResult) -> bool:
+    """只有 400/404 才回退下一个候选."""
+    if result.status != "error":
+        return False
+    msg = result.error_message
+    return "400" in msg or "404" in msg
