@@ -25,9 +25,10 @@ def cli():
 def completion(shell: str):
     """安装命令补全 (tab 补全).
 
+    \b
     用法:
-      eval "$(agentfly completion bash)"  然后 source ~/.bashrc
-      eval "$(agentfly completion zsh)"   然后 source ~/.zshrc
+      eval "$(agentfly completion bash)"   # 然后 source ~/.bashrc
+      eval "$(agentfly completion zsh)"    # 然后 source ~/.zshrc
       agentfly completion fish | source
     """
     import os
