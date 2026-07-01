@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import httpx
 
-from lmswitch.cli import provider_cmd as pc
+from agentfly.cli import provider_cmd as pc
 
 
 class _Resp:

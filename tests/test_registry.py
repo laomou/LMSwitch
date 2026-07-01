@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from lmswitch.agents.codex import Codex
-from lmswitch.agents.registry import AgentRegistry
-from lmswitch.models.types import AgentType
+from agentfly.agents.codex import Codex
+from agentfly.agents.registry import AgentRegistry
+from agentfly.models.types import AgentType
 
 
 class TestRegistry:
@@ -35,14 +35,14 @@ class _GoodEP:
 
 class TestDiscover:
     def test_skips_failing_entry_point(self, monkeypatch):
-        monkeypatch.setattr("lmswitch.agents.registry.entry_points",
+        monkeypatch.setattr("agentfly.agents.registry.entry_points",
                             lambda group=None: [_BadEP()])
         reg = AgentRegistry()
         reg.discover_from_entry_points()  # 加载失败不应抛
         assert reg.names() == []
 
     def test_loads_good_entry_point(self, monkeypatch):
-        monkeypatch.setattr("lmswitch.agents.registry.entry_points",
+        monkeypatch.setattr("agentfly.agents.registry.entry_points",
                             lambda group=None: [_GoodEP()])
         reg = AgentRegistry()
         reg.discover_from_entry_points()
@@ -50,6 +50,6 @@ class TestDiscover:
 
 
 def test_get_registry_singleton():
-    from lmswitch.agents.registry import get_registry
+    from agentfly.agents.registry import get_registry
 
     assert get_registry() is get_registry()

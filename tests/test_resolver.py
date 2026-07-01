@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from lmswitch.core.resolver import ConfigResolver
-from lmswitch.models.schema import AgentConfig, ProviderConfig, UnifiedConfig
-from lmswitch.models.types import AgentType, ProviderType
+from agentfly.core.resolver import ConfigResolver
+from agentfly.models.schema import AgentConfig, ProviderConfig, UnifiedConfig
+from agentfly.models.types import AgentType, ProviderType
 
 
 def _cfg(api_key="sk-x", endpoints=None):

@@ -3,8 +3,8 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "lmswitch"
-version = "0.2.0"
+name = "agentfly"
+version = "0.3.1"
 description = "AI Agent 客制化配置中心 — 统一管理多 Agent 配置，一键启动"
 readme = "README.md"
 license = "MIT"
@@ -23,7 +23,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
-urls = {Repository = "https://github.com/laomou/LMSwitch"}
+urls = {Repository = "https://github.com/laomou/agentfly"}
 
 dependencies = [
     "click>=8.0",
@@ -40,16 +40,16 @@ dev = [
 ]
 
 [project.scripts]
-lmswitch = "lmswitch.main:cli"
+agentfly = "agentfly.main:cli"
 
-[project.entry-points."lmswitch.agents"]
-claude = "lmswitch.agents.claude:Claude"
-cline = "lmswitch.agents.cline:Cline"
-codex = "lmswitch.agents.codex:Codex"
-droid = "lmswitch.agents.droid:Droid"
-opencode = "lmswitch.agents.opencode:OpenCode"
-openclaw = "lmswitch.agents.openclaw:OpenClaw"
-pi = "lmswitch.agents.pi:Pi"
+[project.entry-points."agentfly.agents"]
+claude = "agentfly.agents.claude:Claude"
+cline = "agentfly.agents.cline:Cline"
+codex = "agentfly.agents.codex:Codex"
+droid = "agentfly.agents.droid:Droid"
+opencode = "agentfly.agents.opencode:OpenCode"
+openclaw = "agentfly.agents.openclaw:OpenClaw"
+pi = "agentfly.agents.pi:Pi"
 
 [tool.setuptools.packages.find]
 where = ["src"]

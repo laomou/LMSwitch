@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from lmswitch.agents.base import Agent
-from lmswitch.agents.claude import Claude
-from lmswitch.core import launcher as launcher_mod
-from lmswitch.core.launcher import AgentLauncher, LaunchError
-from lmswitch.models.schema import AgentConfig, ProviderConfig, ResolvedConfig
-from lmswitch.models.types import AgentType, ProviderType
+from agentfly.agents.base import Agent
+from agentfly.agents.claude import Claude
+from agentfly.core import launcher as launcher_mod
+from agentfly.core.launcher import AgentLauncher, LaunchError
+from agentfly.models.schema import AgentConfig, ProviderConfig, ResolvedConfig
+from agentfly.models.types import AgentType, ProviderType
 
 
 class TestAdapterEnvVars:

@@ -8,15 +8,15 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-from lmswitch.cli import launch as launch_mod
-from lmswitch.cli.launch import (
+from agentfly.cli import launch as launch_mod
+from agentfly.cli.launch import (
     _prompt_select,
     _select_model,
     _select_provider,
     launch,
 )
-from lmswitch.models.schema import AgentConfig, ProviderConfig, UnifiedConfig
-from lmswitch.models.types import AgentType, ProviderType
+from agentfly.models.schema import AgentConfig, ProviderConfig, UnifiedConfig
+from agentfly.models.types import AgentType, ProviderType
 
 
 def _provider(fmt: str = "openai", models: list[str] | None = None,
@@ -79,7 +79,7 @@ class TestSelectProvider:
 
     def test_multiple_tty_prompts(self, tty, monkeypatch):
         # 模拟用户选第 2 项
-        monkeypatch.setattr("lmswitch.cli.launch.click.prompt", lambda *a, **k: 2)
+        monkeypatch.setattr("agentfly.cli.launch.click.prompt", lambda *a, **k: 2)
         cfg = UnifiedConfig(providers={"a": _provider(), "b": _provider()})
         assert _select_provider(cfg, "codex", "openai") == "b"
 
@@ -97,7 +97,7 @@ class TestSelectModel:
         assert _select_model(_provider(models=["m1", "m2"])) is None
 
     def test_multiple_tty_prompts(self, tty, monkeypatch):
-        monkeypatch.setattr("lmswitch.cli.launch.click.prompt", lambda *a, **k: 2)
+        monkeypatch.setattr("agentfly.cli.launch.click.prompt", lambda *a, **k: 2)
         assert _select_model(_provider(models=["m1", "m2"], default="m1")) == "m2"
 
 
@@ -105,7 +105,7 @@ class TestPromptSelect:
     """_prompt_select 编号 → 选项 映射."""
 
     def test_returns_indexed_item(self, monkeypatch):
-        monkeypatch.setattr("lmswitch.cli.launch.click.prompt", lambda *a, **k: 1)
+        monkeypatch.setattr("agentfly.cli.launch.click.prompt", lambda *a, **k: 1)
         assert _prompt_select("X", ["foo", "bar"]) == "foo"
 
     def test_default_index_points_to_default(self, monkeypatch):
@@ -115,7 +115,7 @@ class TestPromptSelect:
             captured.update(k)
             return k.get("default")
 
-        monkeypatch.setattr("lmswitch.cli.launch.click.prompt", fake_prompt)
+        monkeypatch.setattr("agentfly.cli.launch.click.prompt", fake_prompt)
         # default="bar" 是第 2 项，回车应选中它
         assert _prompt_select("X", ["foo", "bar"], default="bar") == "bar"
         assert captured["default"] == 2

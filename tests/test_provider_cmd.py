@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import pytest
-from lmswitch.cli.provider_cmd import _auto_name, _mask_key, _is_plaintext_key
-from lmswitch.models.schema import ProviderConfig, TestResult
-from lmswitch.models.types import ProviderType
-from lmswitch.providers.base import Provider
+from agentfly.cli.provider_cmd import _auto_name, _mask_key, _is_plaintext_key
+from agentfly.models.schema import ProviderConfig, TestResult
+from agentfly.models.types import ProviderType
+from agentfly.providers.base import Provider
 
 
 class TestAutoName:

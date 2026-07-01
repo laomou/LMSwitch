@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from lmswitch.agents.claude import Claude
-from lmswitch.models.types import AgentType
+from agentfly.agents.claude import Claude
+from agentfly.models.types import AgentType
 
 
 class TestClaude:

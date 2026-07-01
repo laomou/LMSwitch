@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import pytest
-from lmswitch.models.schema import ProviderConfig
-from lmswitch.models.types import ProviderType
-from lmswitch.providers.manager import ProviderManager
+from agentfly.models.schema import ProviderConfig
+from agentfly.models.types import ProviderType
+from agentfly.providers.manager import ProviderManager
 
 
 class TestProviderManager:

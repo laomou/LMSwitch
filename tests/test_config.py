@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from lmswitch.core.config import (
+from agentfly.core.config import (
     config_path,
     ensure_config_exists,
     load_config,
     save_config,
 )
-from lmswitch.models.schema import UnifiedConfig
+from agentfly.models.schema import UnifiedConfig
 
 
 class TestConfigPath:
@@ -20,7 +20,7 @@ class TestConfigPath:
 
     def test_default_path(self):
         path = config_path()
-        assert str(path).endswith(".config/lmswitch/config.yaml")
+        assert str(path).endswith(".config/agentfly/config.yaml")
 
     def test_explicit_path(self):
         path = config_path("/tmp/my-config.yaml")
@@ -34,7 +34,7 @@ class TestConfigPath:
     def test_xdg_config_home(self, monkeypatch):
         monkeypatch.setenv("XDG_CONFIG_HOME", "/custom/xdg")
         path = config_path()
-        assert str(path) == "/custom/xdg/lmswitch/config.yaml"
+        assert str(path) == "/custom/xdg/agentfly/config.yaml"
 
 
 class TestLoadSave:
@@ -47,7 +47,7 @@ class TestLoadSave:
 
     def test_load_nonexistent(self):
         with pytest.raises(FileNotFoundError):
-            load_config("/tmp/nonexistent-lmswitch-config.yaml")
+            load_config("/tmp/nonexistent-agentfly-config.yaml")
 
     def test_save_creates_dir(self, tmp_path):
         cfg_path = tmp_path / "sub" / "dir" / "config.yaml"

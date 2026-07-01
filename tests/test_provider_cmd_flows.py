@@ -5,16 +5,16 @@ from __future__ import annotations
 import pytest
 from click.testing import CliRunner
 
-from lmswitch.cli import provider_cmd as pc
-from lmswitch.cli.provider_cmd import (
+from agentfly.cli import provider_cmd as pc
+from agentfly.cli.provider_cmd import (
     add_provider,
     list_providers,
     reload_models,
     remove_provider,
     show_provider,
 )
-from lmswitch.models.schema import ProviderConfig, UnifiedConfig
-from lmswitch.models.types import ProviderType
+from agentfly.models.schema import ProviderConfig, UnifiedConfig
+from agentfly.models.types import ProviderType
 
 
 def _cfg():

@@ -10,16 +10,16 @@ import re
 
 import pytest
 
-from lmswitch.agents.base import openai_base_url
-from lmswitch.agents.claude import Claude
-from lmswitch.agents.cline import Cline
-from lmswitch.agents.codex import Codex
-from lmswitch.agents.droid import Droid
-from lmswitch.agents.opencode import OpenCode
-from lmswitch.agents.openclaw import OpenClaw
-from lmswitch.agents.pi import Pi
-from lmswitch.models.schema import AgentConfig, ProviderConfig, ResolvedConfig
-from lmswitch.models.types import ProviderType
+from agentfly.agents.base import openai_base_url
+from agentfly.agents.claude import Claude
+from agentfly.agents.cline import Cline
+from agentfly.agents.codex import Codex
+from agentfly.agents.droid import Droid
+from agentfly.agents.opencode import OpenCode
+from agentfly.agents.openclaw import OpenClaw
+from agentfly.agents.pi import Pi
+from agentfly.models.schema import AgentConfig, ProviderConfig, ResolvedConfig
+from agentfly.models.types import ProviderType
 
 # POSIX 环境变量名: 字母/下划线开头，后续字母数字下划线
 _ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -64,8 +64,8 @@ class TestAdapterContract:
 
 def test_cline_anthropic_branch():
     """Cline 在 anthropic 格式下走 ANTHROPIC_* 分支."""
-    from lmswitch.agents.cline import Cline
-    from lmswitch.models.types import AgentType
+    from agentfly.agents.cline import Cline
+    from agentfly.models.types import AgentType
 
     rc = ResolvedConfig(
         agent=AgentConfig(name=AgentType.CLINE, provider="anthropic", model="m1"),
@@ -96,6 +96,6 @@ def test_opencode_config_content_has_v1():
     env = OpenCode().env_vars(_resolved_for(OpenCode()))
     assert "OPENAI_BASE_URL" not in env  # 改用 OPENCODE_CONFIG_CONTENT，不落 env base url
     cfg = json.loads(env["OPENCODE_CONFIG_CONTENT"])
-    opts = cfg["provider"]["lmswitch"]["options"]
+    opts = cfg["provider"]["agentfly"]["options"]
     assert opts["baseURL"].endswith("/v1")
     assert opts["apiKey"]

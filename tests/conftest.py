@@ -8,13 +8,13 @@ from tempfile import NamedTemporaryFile
 import pytest
 import yaml
 
-from lmswitch.models.schema import (
+from agentfly.models.schema import (
     AgentConfig,
     ProviderConfig,
     ResolvedConfig,
     UnifiedConfig,
 )
-from lmswitch.models.types import AgentType, ProviderType
+from agentfly.models.types import AgentType, ProviderType
 
 
 @pytest.fixture

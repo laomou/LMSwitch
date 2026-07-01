@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from click.testing import CliRunner
 
-from lmswitch.main import cli
+from agentfly.main import cli
 
 
 class TestCli:
@@ -17,4 +17,4 @@ class TestCli:
     def test_version(self):
         r = CliRunner().invoke(cli, ["--version"])
         assert r.exit_code == 0
-        assert "lmswitch" in r.output
+        assert "agentfly" in r.output

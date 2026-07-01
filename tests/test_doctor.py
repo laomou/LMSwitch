@@ -1,13 +1,13 @@
-"""lmswitch doctor 测试 — 含 ${VAR} key 的回归保护 (曾因缺 import os 崩溃)."""
+"""agentfly doctor 测试 — 含 ${VAR} key 的回归保护 (曾因缺 import os 崩溃)."""
 
 from __future__ import annotations
 
 from click.testing import CliRunner
 
-from lmswitch.cli import doctor as doctor_mod
-from lmswitch.cli.doctor import doctor
-from lmswitch.models.schema import ProviderConfig, UnifiedConfig
-from lmswitch.models.types import ProviderType
+from agentfly.cli import doctor as doctor_mod
+from agentfly.cli.doctor import doctor
+from agentfly.models.schema import ProviderConfig, UnifiedConfig
+from agentfly.models.types import ProviderType
 
 
 def _cfg(api_key, endpoints=None, models=None):

@@ -1,4 +1,4 @@
-"""lmswitch test 命令测试 — 纯函数 + 命令派发."""
+"""agentfly test 命令测试 — 纯函数 + 命令派发."""
 
 from __future__ import annotations
 
@@ -8,10 +8,10 @@ import click
 import pytest
 from click.testing import CliRunner
 
-from lmswitch.cli import test_cmd as tc
-from lmswitch.cli.test_cmd import _base, _icon, _pad, _resolve, test
-from lmswitch.models.schema import ProviderConfig, TestResult, UnifiedConfig
-from lmswitch.models.types import ProviderType
+from agentfly.cli import test_cmd as tc
+from agentfly.cli.test_cmd import _base, _icon, _pad, _resolve, test
+from agentfly.models.schema import ProviderConfig, TestResult, UnifiedConfig
+from agentfly.models.types import ProviderType
 
 
 class TestPad:

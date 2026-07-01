@@ -11,11 +11,11 @@ from pathlib import Path
 
 import pytest
 
-from lmswitch.agents.configfile import ScopedConfigFile, read_json
-from lmswitch.agents.droid import Droid
-from lmswitch.agents.pi import Pi
-from lmswitch.models.schema import AgentConfig, ProviderConfig, ResolvedConfig
-from lmswitch.models.types import AgentType, ProviderType
+from agentfly.agents.configfile import ScopedConfigFile, read_json
+from agentfly.agents.droid import Droid
+from agentfly.agents.pi import Pi
+from agentfly.models.schema import AgentConfig, ProviderConfig, ResolvedConfig
+from agentfly.models.types import AgentType, ProviderType
 
 
 def _rc(name: AgentType, model: str = "deepseek-v4-pro") -> ResolvedConfig:
@@ -54,11 +54,11 @@ class TestScopedConfigFile:
 
         merged = read_json(p)
         assert merged == {"keep": "me", "added": True}      # merge，不覆盖
-        assert (tmp_path / "cfg.json.lmswitch.bak").exists()  # 写前备份
+        assert (tmp_path / "cfg.json.agentfly.bak").exists()  # 写前备份
 
         patch.restore()
         assert read_json(p) == {"keep": "me"}                # 完整还原
-        assert not (tmp_path / "cfg.json.lmswitch.bak").exists()  # 备份清掉
+        assert not (tmp_path / "cfg.json.agentfly.bak").exists()  # 备份清掉
 
     def test_corrupt_file_treated_as_empty(self, tmp_path):
         p = tmp_path / "cfg.json"
@@ -81,11 +81,11 @@ class TestDroidInjection:
 
         data = read_json(settings)
         ours = data["customModels"][0]
-        assert ours["id"] == "lmswitch"
+        assert ours["id"] == "agentfly"
         assert ours["baseUrl"] == "https://api.deepseek.com/v1"
         assert ours["apiKey"] == "sk-secret"
         assert ours["provider"] == "generic-chat-completion-api"
-        assert data["sessionDefaultSettings"]["model"] == "lmswitch"
+        assert data["sessionDefaultSettings"]["model"] == "agentfly"
         # 用户原有的模型与字段保留
         assert {"id": "mine", "model": "x"} in data["customModels"]
         assert data["theme"] == "dark"
@@ -109,11 +109,11 @@ class TestPiInjection:
         p = Pi()
         rc = _rc(AgentType.PI)
         cmd = p.launch_command(rc)
-        assert cmd == ["pi", "--provider", "lmswitch", "--model", "deepseek-v4-pro"]
+        assert cmd == ["pi", "--provider", "agentfly", "--model", "deepseek-v4-pro"]
 
         p.pre_launch(rc)
         models = home / ".pi" / "agent" / "models.json"
-        prov = read_json(models)["providers"]["lmswitch"]
+        prov = read_json(models)["providers"]["agentfly"]
         assert prov["baseUrl"] == "https://api.deepseek.com/v1"
         assert prov["api"] == "openai-completions"
         assert prov["apiKey"] == "sk-secret"

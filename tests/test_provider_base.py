@@ -5,10 +5,10 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from lmswitch.models.schema import ProviderConfig
-from lmswitch.models.types import ProviderType
-from lmswitch.providers.anthropic import AnthropicProvider
-from lmswitch.providers.openai import OpenAIProvider
+from agentfly.models.schema import ProviderConfig
+from agentfly.models.types import ProviderType
+from agentfly.providers.anthropic import AnthropicProvider
+from agentfly.providers.openai import OpenAIProvider
 
 
 def _openai_provider():
@@ -58,7 +58,7 @@ def _patch_client(monkeypatch, *, stream=None, exc=None):
                 raise exc
             return stream
 
-    monkeypatch.setattr("lmswitch.providers.base.httpx.Client", FakeClient)
+    monkeypatch.setattr("agentfly.providers.base.httpx.Client", FakeClient)
 
 
 class TestTestModel:
@@ -141,7 +141,7 @@ class TestProviderMethods:
         assert p.list_models()  # 非空
 
     def test_deepseek(self):
-        from lmswitch.providers.deepseek import DeepSeekProvider
+        from agentfly.providers.deepseek import DeepSeekProvider
         p = DeepSeekProvider(ProviderConfig(
             name=ProviderType.DEEPSEEK, api_key="k",
             endpoints={"openai": "http://x"}, models=["d1"]))
@@ -150,7 +150,7 @@ class TestProviderMethods:
         assert p.list_models() == ["d1"]
 
     def test_custom_endpoint_depends_on_format(self):
-        from lmswitch.providers.custom import CustomProvider
+        from agentfly.providers.custom import CustomProvider
         oa = CustomProvider(ProviderConfig(
             name=ProviderType.CUSTOM, api_key="k",
             endpoints={"openai": "http://x"}, models=["c1"]))

@@ -3,30 +3,30 @@
 统一管理多 AI Agent 配置，一键启动。
 
 ```bash
-pip install lmswitch
+pip install agentfly
 ```
 
 ## 快速开始
 
 ```bash
 # 1. 添加 DeepSeek（自动填 BASE_URL + 探测端点 + 拉模型）
-lmswitch provider add deepseek --api-key '${DEEPSEEK_API_KEY}'
+agentfly provider add deepseek --api-key '${DEEPSEEK_API_KEY}'
 
 # 2. 测试模型（stream 模式: 延迟 + TTFT + 吞吐）
-lmswitch test deepseek
+agentfly test deepseek
 
 # 3. 启动 Claude Code
-lmswitch launch claude
+agentfly launch claude
 ```
 
 ## 命令
 
 | 命令 | 作用 |
 |------|------|
-| `lmswitch launch` | 启动 AI Agent，自动注入环境变量 |
-| `lmswitch test` | 测试模型延迟 / TTFT / 吞吐 |
-| `lmswitch provider` | 管理服务提供商 (add/list/show/reload/remove) |
-| `lmswitch doctor` | 配置健康检查 |
+| `agentfly launch` | 启动 AI Agent，自动注入环境变量 |
+| `agentfly test` | 测试模型延迟 / TTFT / 吞吐 |
+| `agentfly provider` | 管理服务提供商 (add/list/show/reload/remove) |
+| `agentfly doctor` | 配置健康检查 |
 
 ## 支持的 Agent
 
@@ -43,13 +43,13 @@ lmswitch launch claude
 任意 OpenAI / Anthropic 兼容端点:
 
 ```bash
-lmswitch provider add my-proxy --api-base http://10.0.0.1:3000 --api-key '${MY_KEY}'
+agentfly provider add my-proxy --api-base http://10.0.0.1:3000 --api-key '${MY_KEY}'
 ```
 
 ## 配置
 
 ```yaml
-# ~/.config/lmswitch/config.yaml
+# ~/.config/agentfly/config.yaml
 providers:
   deepseek:
     name: deepseek
@@ -69,5 +69,5 @@ Agent 环境变量从 GitHub 远程配置自动获取，无需手动配置。
 API Key 支持环境变量引用 `${VAR}`，禁止明文存储：
 
 ```bash
-lmswitch provider add deepseek --api-key '${DEEPSEEK_API_KEY}'
+agentfly provider add deepseek --api-key '${DEEPSEEK_API_KEY}'
 ```

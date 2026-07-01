@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from lmswitch.agents.codex import Codex
-from lmswitch.models.schema import AgentConfig, ProviderConfig, ResolvedConfig
-from lmswitch.models.types import AgentType, ProviderType
+from agentfly.agents.codex import Codex
+from agentfly.models.schema import AgentConfig, ProviderConfig, ResolvedConfig
+from agentfly.models.types import AgentType, ProviderType
 
 
 def make_codex_config():
