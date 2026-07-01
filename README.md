@@ -15,8 +15,11 @@ agentfly provider add deepseek --api-key '${DEEPSEEK_API_KEY}'
 # 2. 测试模型（stream 模式: 延迟 + TTFT + 吞吐）
 agentfly test deepseek
 
-# 3. 启动 Claude Code
-agentfly launch claude
+# 3. 启动 Claude Code（指定 Provider / 模型 / 额外参数）
+agentfly launch claude                                              # 默认配置
+agentfly launch claude --provider deepseek                          # 指定 Provider
+agentfly launch claude --model deepseek-v4-pro                      # 指定模型
+agentfly launch claude --provider deepseek -- --continue            # 透传参数
 ```
 
 ## 命令
@@ -27,6 +30,7 @@ agentfly launch claude
 | `agentfly test` | 测试模型延迟 / TTFT / 吞吐 |
 | `agentfly provider` | 管理服务提供商 (add/list/show/reload/remove) |
 | `agentfly doctor` | 配置健康检查 |
+| `agentfly completion` | 安装命令补全 (bash/zsh/fish) |
 
 ## 支持的 Agent
 
