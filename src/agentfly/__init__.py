@@ -1,3 +1,3 @@
 """AgentFly — AI Agent 客制化配置中心."""
 
-__version__ = "0.4.1"
+__version__ = "0.5.0"
