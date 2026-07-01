@@ -1,4 +1,4 @@
-# LMSwitch — AI Agent 客制化配置中心
+# AgentFly — AI Agent 客制化配置中心
 
 统一管理多 AI Agent 配置，一键启动。
 
