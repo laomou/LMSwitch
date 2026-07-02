@@ -8,6 +8,7 @@ from typing import Any
 
 import click
 
+from agentfly.cli._completion import complete_providers, model_completer
 from agentfly.core.config import ensure_config_exists, save_config
 from agentfly.core.resolver import ConfigResolver
 from agentfly.models.schema import ProviderConfig, TestResult
@@ -18,27 +19,6 @@ from agentfly.providers.registry import get_provider
 _STATUS_ICONS = {"ok": "✅", "timeout": "⏳", "error": "❌", "unauthorized": "❌"}
 _COL_STATUS, _COL_API, _COL_LATENCY, _COL_TTFT, _COL_TPS = 14, 10, 8, 8, 8
 _DEFAULT_PARALLEL = 4
-
-
-# ── tab 补全 ──
-
-def _complete_providers(ctx: click.Context, param: click.Parameter, incomplete: str) -> list[Any]:
-    config, _ = ensure_config_exists()
-    return [
-        click.shell_completion.CompletionItem(name)
-        for name in config.providers if name.startswith(incomplete)
-    ]
-
-
-def _complete_models(ctx: click.Context, param: click.Parameter, incomplete: str) -> list[Any]:
-    config, _ = ensure_config_exists()
-    pc = config.providers.get(ctx.params.get("target", ""))
-    if not pc:
-        return []
-    return [
-        click.shell_completion.CompletionItem(m)
-        for m in pc.model_names if m.startswith(incomplete)
-    ]
 
 
 # ── helpers ──
@@ -203,8 +183,8 @@ def _test_provider(
 # ── command ──
 
 @click.command(name="test")
-@click.argument("target", required=False, shell_complete=_complete_providers)
-@click.argument("model_name", required=False, shell_complete=_complete_models)
+@click.argument("target", required=False, shell_complete=complete_providers)
+@click.argument("model_name", required=False, shell_complete=model_completer("target"))
 @click.option("--format", "-f", "fmt", type=click.Choice(["text", "json"]), default="text", help="输出格式")
 @click.option("--parallel", "-p", default=_DEFAULT_PARALLEL, type=int, help=f"并发数 (默认 {_DEFAULT_PARALLEL})")
 @click.option("--timeout", "-t", default=_DEFAULT_TIMEOUT_S, type=float, help=f"单模型超时秒数 (默认 {int(_DEFAULT_TIMEOUT_S)})")

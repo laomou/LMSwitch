@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import threading
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -55,6 +56,7 @@ class Provider(ABC):
     def __init__(self, config: ProviderConfig):
         self.config = config
         self._env_cache: dict[str, dict] = {}  # {agent_name: env}, 实例级避免跨实例泄漏
+        self._models_lock = threading.Lock()   # 保护并发测试对 config.models 的读写
 
     # ── env ──
 
@@ -100,7 +102,11 @@ class Provider(ABC):
         }
 
     def _parse_stream_chunk(self, line: str) -> str | None:
-        """解析 SSE 一行 (OpenAI 格式). 兼容 reasoning 模型."""
+        """解析 SSE 一行, 兼容 OpenAI 与 Anthropic 两种格式 (含 reasoning 模型).
+
+        test_model 会对同一模型同时探测 openai/anthropic 两个接口, 故默认解析器
+        需两种都认: OpenAI 走 choices[].delta, Anthropic 走 content_block_delta.
+        """
         if not line.startswith("data: "):
             return None
         data_str = line[6:]
@@ -110,11 +116,18 @@ class Provider(ABC):
             chunk = json.loads(data_str)
         except json.JSONDecodeError:
             return None
+
+        # OpenAI: choices[].delta.content / reasoning_content
         choices = chunk.get("choices")
-        if not choices:
-            return None
-        delta = choices[0].get("delta", {})
-        return delta.get("content") or delta.get("reasoning_content") or ""
+        if choices:
+            delta = choices[0].get("delta", {})
+            return delta.get("content") or delta.get("reasoning_content") or ""
+
+        # Anthropic: content_block_delta 的 text_delta / thinking_delta
+        if chunk.get("type") == "content_block_delta":
+            delta = chunk.get("delta", {})
+            return delta.get("text") or delta.get("thinking") or ""
+        return None
 
     # ── 候选端点 (基于 config.endpoints) ──
 
@@ -124,8 +137,9 @@ class Provider(ABC):
         只保留 config.endpoints 里实际配置了的接口.
         """
         eps = self.config.endpoints
-        cached = [t for t in self.config.models.get(model, "").split(",")
-                  if t.strip() in eps]
+        with self._models_lock:
+            cached_raw = self.config.models.get(model, "")
+        cached = [t for t in cached_raw.split(",") if t.strip() in eps]
         if cached:
             return cached
         return [t for t in _PROBE_ORDER if t in eps]
@@ -197,7 +211,7 @@ class Provider(ABC):
         try:
             t_start = time.monotonic()
             ttft_ms = 0.0
-            token_count = 0
+            char_count = 0
 
             with httpx.Client(timeout=httpx.Timeout(timeout)) as client:
                 with client.stream("POST", url, json=body, headers=headers) as resp:
@@ -217,9 +231,11 @@ class Provider(ABC):
                         if first_token:
                             ttft_ms = (time.monotonic() - t_start) * 1000
                             first_token = False
-                        token_count += len(content) // 4 or 1  # 粗略估算 ~4 字符/token
+                        char_count += len(content)
 
             total_ms = (time.monotonic() - t_start) * 1000
+            # 累计字符数最后统一 /4 估算 token, 避免按碎 chunk 逐片取整高估
+            token_count = char_count // 4
             tps = token_count * 1000 / total_ms if total_ms > 0 else 0
 
             return result(

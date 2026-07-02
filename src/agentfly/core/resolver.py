@@ -43,14 +43,8 @@ def _resolve_env_ref(value: str) -> str:
 
 
 def _resolve_provider(provider: ProviderConfig) -> ProviderConfig:
-    """解析 ProviderConfig 中的环境变量引用."""
-    return ProviderConfig(
-        name=provider.name,
-        api_key=_resolve_env_ref(provider.api_key),
-        endpoints=provider.endpoints,
-        models=provider.models,
-        default_model=provider.default_model,
-    )
+    """解析 ProviderConfig 中的环境变量引用 (其余字段原样保留)."""
+    return provider.model_copy(update={"api_key": _resolve_env_ref(provider.api_key)})
 
 
 def _pick_endpoint(provider: ProviderConfig, preferred_format: str) -> str:

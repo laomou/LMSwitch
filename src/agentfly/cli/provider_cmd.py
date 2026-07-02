@@ -11,18 +11,11 @@ from typing import Any
 import click
 import httpx
 
+from agentfly.cli._completion import complete_providers
 from agentfly.core.config import ensure_config_exists
-
-
-def _complete_providers(ctx: click.Context, param: click.Parameter, incomplete: str) -> list[Any]:
-    """Tab 补全: Provider 名称."""
-    config, _ = ensure_config_exists()
-    return [
-        click.shell_completion.CompletionItem(name)
-        for name in config.providers if name.startswith(incomplete)
-    ]
 from agentfly.models.schema import ProviderConfig
 from agentfly.models.types import ProviderType
+from agentfly.providers.base import _PATHS, _headers
 from agentfly.providers.manager import ProviderManager
 
 # ── 远端厂商配置 ──
@@ -98,17 +91,19 @@ def _is_plaintext_key(key: str) -> bool:
 
 
 def _probe_endpoint(api_base: str, api_key: str, fmt: str) -> bool:
-    """探测指定格式的 endpoint 是否可用."""
+    """探测指定格式的 endpoint 是否可用.
+
+    用与实际测试相同的路径/鉴权头 (base._PATHS / base._headers): OpenAI 走
+    Authorization: Bearer, Anthropic 走 x-api-key。头不对时网关可能返 401 而非
+    404, 会把"协议存在但鉴权失败"误判成"协议不支持"。
+    """
     base = api_base.rstrip("/")
-    endpoint = f"{base}/v1/chat/completions" if fmt == "openai" else f"{base}/v1/messages"
+    endpoint = f"{base}{_PATHS[fmt]}"
     body = {"model": "ping", "max_tokens": 1, "messages": [{"role": "user", "content": "ping"}]}
 
     try:
         with httpx.Client(timeout=httpx.Timeout(8.0)) as client:
-            resp = client.post(
-                endpoint, json=body,
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            )
+            resp = client.post(endpoint, json=body, headers=_headers(fmt, api_key))
             return resp.status_code != 404
     except (httpx.TimeoutException, httpx.ConnectError):
         return False
@@ -345,7 +340,7 @@ def add_provider(name: str | None, api_base: str | None, api_key: str | None,
 
 
 @provider_group.command(name="reload")
-@click.argument("name", shell_complete=_complete_providers)
+@click.argument("name", shell_complete=complete_providers)
 def reload_models(name: str):
     """从 API 重新拉取 Provider 模型列表.
 
@@ -385,7 +380,7 @@ def reload_models(name: str):
 
 
 @provider_group.command(name="remove")
-@click.argument("name", shell_complete=_complete_providers)
+@click.argument("name", shell_complete=complete_providers)
 def remove_provider(name: str):
     """删除 Provider 配置."""
     config, cfg_path = ensure_config_exists()
@@ -403,7 +398,7 @@ def remove_provider(name: str):
 
 
 @provider_group.command(name="show")
-@click.argument("name", shell_complete=_complete_providers)
+@click.argument("name", shell_complete=complete_providers)
 def show_provider(name: str):
     """查看 Provider 详情."""
     config, _ = ensure_config_exists()

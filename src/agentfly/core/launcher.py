@@ -9,7 +9,7 @@ from typing import Optional
 
 from agentfly.models.schema import ResolvedConfig
 from agentfly.agents.base import Agent
-from agentfly.core.injector import EnvInjector
+from agentfly.core.injector import build_env
 from agentfly.providers.registry import get_provider
 
 
@@ -30,7 +30,6 @@ class AgentLauncher:
 
     def __init__(self, agent: Agent):
         self._adapter = agent
-        self._injector = EnvInjector()
 
     def launch(
         self,
@@ -73,7 +72,7 @@ class AgentLauncher:
 
         # 4. 构建完整环境变量
         self._adapter.pre_launch(resolved)
-        full_env = self._injector.build_env(resolved, env_vars)
+        full_env = build_env(resolved, env_vars)
 
         # 5. 启动子进程
         try:
@@ -89,7 +88,7 @@ class AgentLauncher:
             return proc.returncode
 
         except Exception as e:
-            raise LaunchError(f"启动 {self._adapter.name} 失败: {e}")
+            raise LaunchError(f"启动 {self._adapter.name} 失败: {e}") from e
         finally:
             # 无论成功/失败都跑 post_launch（含 ScopedConfigFile 还原），
             # 避免启动失败时临时写入的配置残留在用户目录

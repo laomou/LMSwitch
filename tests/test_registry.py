@@ -53,3 +53,11 @@ def test_get_registry_singleton():
     from agentfly.agents.registry import get_registry
 
     assert get_registry() is get_registry()
+
+
+def test_get_registry_has_builtins():
+    """内置 Agent 直接注册, 不依赖 entry_points (源码 checkout 也能用)."""
+    from agentfly.agents.registry import get_registry
+
+    names = set(get_registry().names())
+    assert {"claude", "cline", "codex", "droid", "opencode", "openclaw", "pi"} <= names

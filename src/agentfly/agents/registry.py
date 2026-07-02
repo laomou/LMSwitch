@@ -53,6 +53,24 @@ class AgentRegistry:
                 pass
 
 
+def _register_builtins(registry: AgentRegistry) -> None:
+    """直接注册内置 Agent 适配器.
+
+    不依赖 entry_points, 故源码 checkout (未 `pip install`) 也能用; entry_points
+    仍用于发现外部插件, 同名插件可覆盖内置。
+    """
+    from agentfly.agents.claude import Claude
+    from agentfly.agents.cline import Cline
+    from agentfly.agents.codex import Codex
+    from agentfly.agents.droid import Droid
+    from agentfly.agents.opencode import OpenCode
+    from agentfly.agents.openclaw import OpenClaw
+    from agentfly.agents.pi import Pi
+
+    for cls in (Claude, Cline, Codex, Droid, OpenCode, OpenClaw, Pi):
+        registry.register(cls())
+
+
 # 全局单例
 _registry: Optional[AgentRegistry] = None
 
@@ -62,5 +80,6 @@ def get_registry() -> AgentRegistry:
     global _registry
     if _registry is None:
         _registry = AgentRegistry()
-        _registry.discover_from_entry_points()
+        _register_builtins(_registry)
+        _registry.discover_from_entry_points()  # 外部插件, 同名覆盖内置
     return _registry

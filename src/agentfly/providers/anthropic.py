@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-
 from agentfly.models.types import ProviderType
 from agentfly.providers.base import Provider
 
@@ -23,16 +21,3 @@ class AnthropicProvider(Provider):
 
     def list_models(self) -> list[str]:
         return ANTHROPIC_MODELS
-
-    def _parse_stream_chunk(self, line: str) -> str | None:
-        """Anthropic SSE: content_block_delta 的 text_delta / thinking_delta."""
-        if not line.startswith("data: "):
-            return None
-        try:
-            event = json.loads(line[6:])
-        except json.JSONDecodeError:
-            return None
-        if event.get("type") == "content_block_delta":
-            delta = event.get("delta", {})
-            return delta.get("text") or delta.get("thinking") or ""
-        return None

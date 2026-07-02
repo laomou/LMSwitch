@@ -28,13 +28,13 @@ def config_path(explicit: Optional[str | Path] = None) -> Path:
 
     优先级:
     1. 显式传入的路径
-    2. 环境变量 LMSWITCH_CONFIG
+    2. 环境变量 AGENTFLY_CONFIG (兼容旧名 LMSWITCH_CONFIG)
     3. XDG_CONFIG_HOME/agentfly/config.yaml
     4. ~/.config/agentfly/config.yaml
     """
     if explicit:
         return Path(explicit)
-    env = os.environ.get("LMSWITCH_CONFIG")
+    env = os.environ.get("AGENTFLY_CONFIG") or os.environ.get("LMSWITCH_CONFIG")
     if env:
         return Path(env)
     return _default_config_dir() / "config.yaml"
