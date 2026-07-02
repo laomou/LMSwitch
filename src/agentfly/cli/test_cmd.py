@@ -12,12 +12,14 @@ from agentfly.cli._completion import complete_providers, model_completer
 from agentfly.core.config import ensure_config_exists, save_config
 from agentfly.core.resolver import ConfigResolver
 from agentfly.models.schema import ProviderConfig, TestResult
-from agentfly.models.types import ProviderType
 from agentfly.providers.base import _DEFAULT_TIMEOUT_S
 from agentfly.providers.registry import get_provider
 
 _STATUS_ICONS = {"ok": "✅", "timeout": "⏳", "error": "❌", "unauthorized": "❌"}
-_COL_STATUS, _COL_API, _COL_LATENCY, _COL_TTFT, _COL_TPS = 14, 10, 8, 8, 8
+_COL_STATUS, _COL_LATENCY, _COL_TTFT, _COL_TPS = 14, 8, 8, 8
+# API 列: api_type 取值封闭 (openai/anthropic), 最长组合 "openai,anthropic" = 16.
+# 流式输出时还拿不到全部行, 用该上限保证不溢出; 非流式则按实际内容动态取宽.
+_COL_API_MAX = len("openai,anthropic")
 _DEFAULT_PARALLEL = 4
 
 
@@ -69,28 +71,28 @@ def _pad(val: float) -> str:
     return f"{val / 1000:.1f}s"
 
 
-def _header(model_w: int) -> str:
+def _header(model_w: int, api_w: int) -> str:
     return (
         f"{'Model':<{model_w}}  "
         f"{'Status':<{_COL_STATUS}}  "
-        f"{'API':<{_COL_API}}  "
+        f"{'API':<{api_w}}  "
         f"{'Total':<{_COL_LATENCY}}  "
         f"{'TTFT':<{_COL_TTFT}}  "
         f"{'TPS':<{_COL_TPS}}\n"
         f"{'-'*model_w}  "
         f"{'-'*_COL_STATUS}  "
-        f"{'-'*_COL_API}  "
+        f"{'-'*api_w}  "
         f"{'-'*_COL_LATENCY}  "
         f"{'-'*_COL_TTFT}  "
         f"{'-'*_COL_TPS}"
     )
 
 
-def _row(r: TestResult, model_w: int) -> str:
+def _row(r: TestResult, model_w: int, api_w: int) -> str:
     return (
         f"{r.model:<{model_w}}  "
         f"{_icon(r.status):<2}{r.status:<{_COL_STATUS - 2}} "
-        f"{(r.api_type or '-'):<{_COL_API}}  "
+        f"{(r.api_type or '-'):<{api_w}}  "
         f"{_pad(r.latency_ms):<{_COL_LATENCY}}  "
         f"{_pad(r.ttft_ms):<{_COL_TTFT}}  "
         f"{_pad(r.tokens_per_sec):<{_COL_TPS}}"
@@ -114,10 +116,11 @@ def _print_table(results: list[TestResult]) -> None:
     if not results:
         return
     model_w = max(max(len(r.model) for r in results), 5)
+    api_w = max(max(len(r.api_type or "-") for r in results), len("API"))
     click.echo(f"Provider: {results[0].provider}")
-    click.echo(_header(model_w))
+    click.echo(_header(model_w, api_w))
     for r in results:
-        click.echo(_row(r, model_w))
+        click.echo(_row(r, model_w, api_w))
 
 
 def _print_json(results: list[TestResult]) -> None:
@@ -165,11 +168,12 @@ def _test_provider(
         return []
 
     model_w = max(len(m) for m in models)
+    api_w = _COL_API_MAX
     on_result = None
     if stream:
         click.echo(f"Provider: {provider_key}")
-        click.echo(_header(model_w))
-        on_result = lambda r: click.echo(_row(r, model_w))  # noqa: E731
+        click.echo(_header(model_w, api_w))
+        on_result = lambda r: click.echo(_row(r, model_w, api_w))  # noqa: E731
 
     results = _run_models(
         pc, p, provider_key, models, parallel=parallel, timeout=timeout, on_result=on_result,

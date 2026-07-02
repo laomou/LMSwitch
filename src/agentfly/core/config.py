@@ -10,9 +10,8 @@ import yaml
 
 from agentfly.models.schema import UnifiedConfig
 
-# XDG 规范：默认配置路径
+# XDG 规范：默认配置目录
 DEFAULT_CONFIG_DIR = Path.home() / ".config" / "agentfly"
-DEFAULT_CONFIG_PATH = DEFAULT_CONFIG_DIR / "config.yaml"
 
 
 def _default_config_dir() -> Path:

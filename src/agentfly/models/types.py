@@ -22,12 +22,3 @@ class AgentType(str, Enum):
     OPENCODE = "opencode"
     OPENCLAW = "openclaw"
     PI = "pi"
-
-
-class TestStatus(str, Enum):
-    """模型测试状态."""
-
-    OK = "ok"
-    TIMEOUT = "timeout"
-    ERROR = "error"
-    UNAUTHORIZED = "unauthorized"
